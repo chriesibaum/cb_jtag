@@ -1,0 +1,9 @@
+antlr4-tools
+pytest
+pyyaml
+pycodestyle
+autopep8
+bandit
+hatch
+twine
+flake8
