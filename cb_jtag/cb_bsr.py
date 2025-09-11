@@ -16,12 +16,18 @@ class CBBsrPin():
     def run_output(self, bsr):
         return bsr
 
+    def set_verbose(self, verbose):
+        self.verbose = verbose
+
 
 class CBBsrPinNotifier(CBBsrPin):
-    def __init__(self, bsdl, pin, cb=None, verbose=False):
+    def __init__(self, bsdl, pin,
+                 cb=None, cb_parent=None,
+                 verbose=False):
         self.bsdl = bsdl
         self.pin = pin
         self.cb = cb
+        self.cb_parent = cb_parent
         self.verbose = verbose
 
         self.data_cell = self.bsdl.get_bsr_data_cell(self.pin +'_in')
@@ -29,6 +35,12 @@ class CBBsrPinNotifier(CBBsrPin):
         self.val = 0
         self.last_val = 0
 
+    def get_val(self):
+        return self.val
+
+    def set_cb(self, cb=None, cb_parent=None):
+        self.cb = cb
+        self.cb_parent = cb_parent
 
     def run_input(self, bsr):
         self.val = bsr.get_bit(self.data_cell)
@@ -38,7 +50,10 @@ class CBBsrPinNotifier(CBBsrPin):
                 print(f'Pin {self.pin} changed to {self.val}')
 
             if self.cb is not None:
-                self.cb(self.pin, self.val)
+                if self.cb_parent is None:
+                    self.cb(self.pin, self.val)
+                else:
+                    self.cb(self.cb_parent, self.pin, self.val)
 
             self.last_val = self.val
 
@@ -61,12 +76,13 @@ class CBRsrOutput(CBBsrPin):
         self.last_toggle_time = time.time()
 
 
-    def config(self, bsr, verbose = False):
+    def config(self, bsr, ctrl_cell=True, verbose = False):
         # Configure the BSR for the output pin and its value
         if self.verbose or verbose:
             print(f'  Pin {self.pin} as output, data cell {self.data_cell:4d}, ctrl cell {self.ctrl_cell:4d}')
 
-        bsr = bsr.set_bit(self.ctrl_cell, 1 ^ self.disval)
+        if ctrl_cell:
+            bsr = bsr.set_bit(self.ctrl_cell, 1 ^ self.disval)
         bsr = bsr.set_bit(self.data_cell, self.val)
 
         return bsr
@@ -80,11 +96,11 @@ class CBRsrOutput(CBBsrPin):
         return bsr
 
 
-    def set_bit(self, val = True):
+    def set_val(self, val = True):
         self.val = val
 
 
-    def clear_bit(self):
+    def clear_val(self):
         self.val = 0
 
 
@@ -141,6 +157,9 @@ class CBBsr(threading.Thread):
             print(f'  0x{self.bsr_out:076x}')
 
         self.pins = []
+
+    def set_verbose(self, verbose):
+        self.verbose = verbose
 
     def add_pin(self, pin: CBBsrPin):
         self.pins.append(pin)

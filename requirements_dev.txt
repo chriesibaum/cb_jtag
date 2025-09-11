@@ -1,5 +1,5 @@
-antlr4-tools
 pytest
+pytest-cov
 pyyaml
 pycodestyle
 autopep8

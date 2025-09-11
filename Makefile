@@ -20,14 +20,19 @@ BANDIT_FLAGS := --format custom --msg-template \
 HATCH := hatch
 
 
-
-all:
-
-
-
+.PHONY: test
 test:
-	pytest -v -rP
+	@$(E) "running tests..."
+# 	pytest -v -rP test/test_0.py::Test_Nucleo_G474RE
+	coverage run    -m pytest -v -rP ./test/test_0_cb_bit.py
+	coverage run -a -m pytest -v -rP ./test/test_cb_jtag_iface.py
+	coverage run -a -m pytest -v -rP ./test/test_0_nucleo_G474RE.py
 
+	# 	coverage run -m pytest -v -rP test/test_0_board_LPC1837.py
+
+cov_report: test
+	coverage report -m
+	coverage html
 
 build:
 	$(HATCH) build
@@ -38,8 +43,12 @@ install: build
 
 
 clean:
-	@rm -rf __pycache__
-	@rm -rf */__pycache__
+	@$(E) "cleaning up..."
+	@rm -rf ./__pycache__
+	@rm -rf ./*/__pycache__
+	@rm -rf ./htmlcov
+	@rm -f ./.coverage
+
 
 mr_proper: clean
 	@rm -rf ./$(BUILD_DIR)

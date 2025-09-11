@@ -55,8 +55,8 @@ def main():
 
     # Configure pins for boundary-scan operations
     led_pin_tout = CBRsrOutputToggler(bsdl, 'PA5', toggle_time = 0.5)
-    led_pin_in = CBBsrPinNotifier(bsdl, 'PA5', pin_changed_cb)
-    btn_pin_in = CBBsrPinNotifier(bsdl, 'PC13', pin_changed_cb)
+    led_pin_in = CBBsrPinNotifier(bsdl, 'PA5',  cb=pin_changed_cb)
+    btn_pin_in = CBBsrPinNotifier(bsdl, 'PC13', cb=pin_changed_cb)
 
     b.add_pin(led_pin_tout)
     b.add_pin(led_pin_in)

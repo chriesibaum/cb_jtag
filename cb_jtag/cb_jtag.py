@@ -1,9 +1,13 @@
 
 import math
 import ctypes
+import time
 from .cb_jtag_iface_base import CBJtagIfaceBase
 from .cb_jtag_fsm import Tap_FSM_State
 from .cb_bit import CBBit
+
+
+MAX_TAPS_IN_CHAIN = 128 # maximum number of TAP's in a JTAG chain
 
 
 class CBJtagError(Exception):
@@ -24,6 +28,8 @@ class CBJtag():
         Raises:
             CBJtagError: If the JTAG interface is not properly initialized.
         """
+
+        self.jtag_iface = None
 
         if not isinstance(jtag_iface, CBJtagIfaceBase):
             raise CBJtagError("Invalid JTAG interface provided. Must be an instance of CBJtagIfaceBase.")
@@ -53,7 +59,15 @@ class CBJtag():
 
     def close(self):
         """Close the JTAG interface."""
-        self.jtag_iface.close()
+        if self.jtag_iface is not None:
+            self.jtag_iface.close()
+
+    def set_verbose(self, verbose):
+        """Set the verbosity level for debugging output.
+        Args:
+            verbose (bool): If True, enable verbose output; otherwise, disable it.
+        """
+        self.verbose = verbose
 
     def tap_reset(self):
         """Reset the TAP state machine to the "Test Logic Reset" state."""
@@ -81,7 +95,7 @@ class CBJtag():
             n_bits = 4
             tms_buf = bytes([0b0010])
             tdi_buf = bytes([0b0000])
-        else:
+        else:   # pragma: no cover - todo: add some test
             n_bits = 3
             tms_buf = bytes([0b001])
             tdi_buf = bytes([0b000])
@@ -204,10 +218,9 @@ class CBJtag():
                 self.num_taps = i
                 return(self.num_taps)
 
-            if i > 100:
-                i = 0
-                # to do raise en error!
-                break
+            if i > MAX_TAPS_IN_CHAIN:       # pragma: no cover
+                self.num_taps = 0
+                raise CBJtagError(f"Too many TAPs in chain detected (> {MAX_TAPS_IN_CHAIN}) - aborting")
             i += 1
 
     def set_ir_lengths(self, ir_lengths):
@@ -225,7 +238,7 @@ class CBJtag():
         if self.total_ir_len == None:
             self.total_ir_len = self.get_total_ir_len()
 
-        if self.total_ir_len != calc_ir_len:
+        if self.total_ir_len != calc_ir_len:    # pragma: no cover - todo: add some test
             raise CBJtagError(f"IR length mismatch: expected {calc_ir_len}, got {self.total_ir_len}")
 
         self.ir_lengths = ir_lengths
@@ -276,7 +289,7 @@ class CBJtag():
                 ir_length = i   # + 1 todo: check if +1 is needed
                 break
 
-        if ir_length == 0:
+        if ir_length == 0:    # pragma: no cover - todo: add some test
             raise CBJtagError("Could not detect IR length - no TAPs found or IR length > 512 bits")
 
         # Exit Shift-IR and go to Run-Test/Idle
@@ -289,18 +302,7 @@ class CBJtag():
         """Set the BSR lengths for each TAP in the JTAG chain.
         Args:
             bsr_lengths (list): A list of BSR lengths for each TAP.
-        Raises:
-            CBJtagError: If the total BSR length does not match the expected value.
         """
-        calc_bsr_len = sum(bsr_lengths)
-
-        # # check the actual bsr length     -> this is not implemented yet
-        # if self.total_bsr_len is not set, retrieve it
-        # if self.total_bsr_len == None:
-        #     self.total_bsr_len = self.get_total_bsr_len()
-
-        # if self.total_bsr_len != calc_bsr_len:
-        #     raise CBJtagError(f"BSR length mismatch: expected {calc_bsr_len}, got {self.total_bsr_len}")
 
         self.bsr_lengths = bsr_lengths
 
@@ -340,7 +342,7 @@ class CBJtag():
         Raises:
             JLinkException: on error.
         """
-        if tap_num >= self.num_taps:
+        if tap_num >= self.num_taps:    # pragma: no cover - todo: add some test
             raise CBJtagError('Invalid TAP number')
 
 

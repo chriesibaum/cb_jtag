@@ -1,11 +1,10 @@
-from .cb_jtag_iface_base import CBJtagIfaceBase
-from .cb_jtag import CBJtagError
+import sys
 
 from pylink import JLink
 from pylink import enums
 
-import ctypes
-import math
+from .cb_jtag_iface_base import CBJtagIfaceBase
+from .cb_jtag import CBJtagError
 
 
 
@@ -25,12 +24,12 @@ class CBJLink(JLink, CBJtagIfaceBase):
                                                   tdo_buf,
                                                   tms_buf,
                                                   n_bits)
-        if res < 0:
+        if res < 0:         # pragma: no cover
             raise CBJtagError(f"dll call JLINKARM_JTAG_StoreGetRaw failed with error code: {res}")
 
 
         res = self._dll.JLINKARM_JTAG_SyncBits()
-        if res < 0:
+        if res < 0:         # pragma: no cover
             raise CBJtagError(f"dll call JLINKARM_JTAG_SyncBits failed with error code: {res}")
 
     # todo: @SEGGER: would be nice to have a JLINKARM_JTAG_Reset() function
@@ -55,9 +54,9 @@ class CBJLink(JLink, CBJtagIfaceBase):
             print(f'  S/N: {emu.SerialNumber}')
 
         # Get the first emulator S/N to connect to it
-        if not emulators:
+        if not emulators:   # pragma: no cover
             print('No J-Link emulators found!')
-            exit(-1)
+            sys.exit(-1)
         serial_no = emulators[0].SerialNumber
 
         # Open a connection to the J-Link adapter
