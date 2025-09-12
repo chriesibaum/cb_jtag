@@ -1,3 +1,7 @@
 
 .venv/
 old/
+
+cb_jtag/__pycache__/
+
+dist/

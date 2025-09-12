@@ -42,6 +42,11 @@ install: build
 	@pip install dist/cb_jtag*.whl --force-reinstall
 
 
+deploy: build
+	$(E) Uploading package to PyPI...
+	twine upload dist/*
+
+
 clean:
 	@$(E) "cleaning up..."
 	@rm -rf ./__pycache__
