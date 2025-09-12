@@ -136,8 +136,6 @@ class CBJtag():
         tdi_buf = bytes([0x00])
         tdo_buf = (ctypes.c_ubyte * 1)()
 
-        # print(f'tms @ tap_go: {tms_buf}')
-
         self.jtag_iface.jtag_write_read(tdi_buf,
                                         tdo_buf,
                                         tms_buf,
@@ -401,8 +399,6 @@ class CBJtag():
         tdi_buf = bytes([0x00] * n_bytes)
         tdo_buf = (ctypes.c_ubyte * n_bytes)()
 
-        # tdi = 0x920000024924124924924900000000000924900000024000124924124000004000124900
-        # tdi_buf = tdi.to_bytes(n_bytes, byteorder='little')
 
         self.jtag_iface.jtag_write_read(tdi_buf,
                                         tdo_buf,
@@ -468,6 +464,7 @@ class CBJtag():
 
         # set the TAP to OPCODE and read the BS register
         self.instr(tap_num, opcode)
+        time.sleep(0.01)
         bsr = self.read_dr(self.bsr_lengths[tap_num])
 
         return bsr
@@ -478,6 +475,7 @@ class CBJtag():
 
         # set the TAP to OPCODE and write the BS register
         self.instr(tap_num, opcode)
+        time.sleep(0.01)
         bsr = self.write_dr(self.bsr_lengths[tap_num], bsr)
 
         return bsr
