@@ -93,3 +93,19 @@ class CBJtagBase:
         for id_code, exp_id_code in zip(self.id_codes, self.exp_idcodes):
             print(f'TAP {self.id_codes.index(id_code)}: IDCODE: 0x{id_code:08X}, expected: 0x{exp_id_code:08X}')
             assert id_code == exp_id_code, f'IDCODE mismatch: {id_code} != {exp_id_code}'
+
+    def test_002_bsr_running(self):
+        print('Testing BSR running')
+        time.sleep(1)
+        assert self.bsr.get_running() == True, 'BSR thread not running'
+
+
+    def test_003_bsr_enable_disable(self):
+        print('Testing BSR enable/disable')
+        self.bsr.disable()
+        time.sleep(0.1) # wait for the bsr thread to disable/halt
+        assert self.bsr.get_running() == False, 'BSR thread not running after disable'
+
+        self.bsr.enable()
+        time.sleep(0.1) # wait for the bsr thread to enable/start
+        assert self.bsr.get_running() == True, 'BSR thread running again after enable'

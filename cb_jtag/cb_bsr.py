@@ -193,6 +193,9 @@ class CBBsr(threading.Thread):
     def stop(self):
         self.run_flag = False
 
+    def get_running(self):
+        return self.run_flag and self.enable_flag
+
 
     def run(self):
         while self.run_flag:
