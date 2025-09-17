@@ -148,6 +148,7 @@ class CBBsr(threading.Thread):
         self.jtag = jtag
         self.verbose = verbose
 
+        self.enable_flag = False
         self.run_flag = True
 
         # read the initial boundaray scan register
@@ -183,7 +184,11 @@ class CBBsr(threading.Thread):
 
         self.bsr_in = self.jtag.write_bsr(0, 0b00000, self.bsr_out)
 
+    def enable(self):
+        self.enable_flag = True
 
+    def disable(self):
+        self.enable_flag = False
 
     def stop(self):
         self.run_flag = False
@@ -191,6 +196,10 @@ class CBBsr(threading.Thread):
 
     def run(self):
         while self.run_flag:
+            while not self.enable_flag:
+                if self.run_flag == False:
+                    return
+                time.sleep(0.1)
 
             for pin in self.pins:
                 self.bsr_out = pin.run_output(self.bsr_out)
@@ -206,6 +215,7 @@ class CBBsr(threading.Thread):
 
             for pin in self.pins:
                 pin.run_input(self.bsr_in)
+
 
             time.sleep(0.001)
 

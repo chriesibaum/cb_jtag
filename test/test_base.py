@@ -1,4 +1,5 @@
 
+import time
 from cb_bsdl_parser.cb_bsdl import CBBsdl
 
 from cb_jtag import CBJLink
@@ -53,8 +54,11 @@ class CBJtagBase:
     def start_bs(self):
         self.bsr.config_pins()
         self.bsr.start()
+        self.bsr.enable()
 
     def stop_bs(self):
+        self.bsr.disable()
+        time.sleep(0.1) # wait for the bsr thread to disable/halt
         self.bsr.stop()
         self.bsr.deconfig_pins()
 

@@ -51,7 +51,7 @@ def main():
     jtag.set_bsr_lengths([bsdl.get_bsr_len(), 0])
 
     # Initialize boundary-scan register interface
-    b = CBBsr(jtag, verbose=1)
+    b = CBBsr(jtag, verbose=2)
 
     # Configure pins for boundary-scan operations
     led_pin_tout = CBRsrOutputToggler(bsdl, 'PA5', toggle_time = 0.5)
