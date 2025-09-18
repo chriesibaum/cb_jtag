@@ -3,6 +3,8 @@ import time
 
 
 class CBBsrPin():
+    def __str__(self):
+        return self.__class__.__name__
 
     def config(self, bsr, verbose = False):
         return bsr
