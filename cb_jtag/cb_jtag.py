@@ -6,6 +6,8 @@ from .cb_jtag_iface_base import CBJtagIfaceBase
 from .cb_jtag_fsm import Tap_FSM_State
 from .cb_bit import CBBit
 
+import logging
+log = logging.getLogger(__name__)
 
 MAX_TAPS_IN_CHAIN = 128 # maximum number of TAP's in a JTAG chain
 
@@ -363,7 +365,7 @@ class CBJtag():
         tms = 1 << (self.total_ir_len - 1)
 
         if self.verbose:
-            print(f'tdi: 0b{tdi:0{self.total_ir_len}b}, tms: {tms:0{self.total_ir_len}b}')
+            log.info(f'tdi: 0b{tdi:0{self.total_ir_len}b}, tms: {tms:0{self.total_ir_len}b}')
 
         n_bits = self.total_ir_len
         n_bytes = math.ceil(self.total_ir_len / 8)
@@ -405,7 +407,6 @@ class CBJtag():
                                         tms_buf,
                                         n_bits)
 
-        # print(f'len: {len(tdo_buf)}')
 
         boundary_scan = int.from_bytes(bytearray(tdo_buf), 'little') >> (self.num_taps -1)
         boundary_scan = CBBit(boundary_scan)
@@ -435,7 +436,7 @@ class CBJtag():
         # go to Exit1-DR at the end
         tms = 1 << (n_bits - 1)
         if self.verbose:
-            print(f'tms:           0x{tms:0{n_bytes}x}')
+            self.info(f'tms:           0x{tms:0{n_bytes}x}')
 
         # prepare and load the buffers
         tms_buf = tms.to_bytes(n_bytes, byteorder='little')

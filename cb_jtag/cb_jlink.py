@@ -6,7 +6,8 @@ from pylink import enums
 from .cb_jtag_iface_base import CBJtagIfaceBase
 from .cb_jtag import CBJtagError
 
-
+import logging
+log = logging.getLogger(__name__)
 
 class CBJLink(JLink, CBJtagIfaceBase):
 
@@ -25,12 +26,12 @@ class CBJLink(JLink, CBJtagIfaceBase):
                                                   tms_buf,
                                                   n_bits)
         if res < 0:         # pragma: no cover
-            raise CBJtagError(f"dll call JLINKARM_JTAG_StoreGetRaw failed with error code: {res}")
+            raise CBJtagError(f'dll call JLINKARM_JTAG_StoreGetRaw failed with error code: {res}')
 
 
         res = self._dll.JLINKARM_JTAG_SyncBits()
         if res < 0:         # pragma: no cover
-            raise CBJtagError(f"dll call JLINKARM_JTAG_SyncBits failed with error code: {res}")
+            raise CBJtagError(f'dll call JLINKARM_JTAG_SyncBits failed with error code: {res}')
 
     # todo: @SEGGER: would be nice to have a JLINKARM_JTAG_Reset() function
     # def sys_reset(self, reset_delay_ms=100):
@@ -49,13 +50,13 @@ class CBJLink(JLink, CBJtagIfaceBase):
         emulators = self.connected_emulators()
 
         # Print the serial number of all emulators
-        print('Connected J-Link emulator(s):')
+        log.info('Connected J-Link emulator(s):')
         for emu in emulators:
-            print(f'  S/N: {emu.SerialNumber}')
+            log.info(f'  S/N: {emu.SerialNumber}')
 
         # Get the first emulator S/N to connect to it
         if not emulators:   # pragma: no cover
-            print('No J-Link emulators found!')
+            log.error('No J-Link emulators found!')
             sys.exit(-1)
         serial_no = emulators[0].SerialNumber
 
