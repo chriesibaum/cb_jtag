@@ -5,6 +5,10 @@ import logging
 log = logging.getLogger(__name__)
 
 class CBBsrPin():
+    # def __init__(self):
+        # self.cb = None
+        # self.cb_parent = None
+
     def __str__(self):
         return self.__class__.__name__
 
@@ -20,6 +24,17 @@ class CBBsrPin():
     def run_output(self, bsr):
         return bsr
 
+    def set_cb(self, cb=None, cb_parent=None):
+        self.cb = cb
+        self.cb_parent = cb_parent
+
+    def call_cb(self):
+        if self.cb is not None:
+            if self.cb_parent is None:
+                self.cb(self.pin, self.val)
+            else:
+                self.cb(self.cb_parent, self.pin, self.val)
+
     def set_verbose(self, verbose):
         self.verbose = verbose
 
@@ -28,6 +43,7 @@ class CBBsrPinNotifier(CBBsrPin):
     def __init__(self, bsdl, pin,
                  cb=None, cb_parent=None,
                  verbose=False):
+
         self.bsdl = bsdl
         self.pin = pin
         self.cb = cb
@@ -37,14 +53,11 @@ class CBBsrPinNotifier(CBBsrPin):
         self.data_cell = self.bsdl.get_bsr_data_cell(self.pin +'_in')
 
         self.val = 0
-        self.last_val = 0
+        self.last_val = None
 
     def get_val(self):
         return self.val
 
-    def set_cb(self, cb=None, cb_parent=None):
-        self.cb = cb
-        self.cb_parent = cb_parent
 
     def run_input(self, bsr):
         self.val = bsr.get_bit(self.data_cell)
@@ -53,11 +66,7 @@ class CBBsrPinNotifier(CBBsrPin):
             if self.verbose:
                 log.info(f'Pin {self.pin} changed to {self.val}')
 
-            if self.cb is not None:
-                if self.cb_parent is None:
-                    self.cb(self.pin, self.val)
-                else:
-                    self.cb(self.cb_parent, self.pin, self.val)
+            self.call_cb()
 
             self.last_val = self.val
 
@@ -66,11 +75,17 @@ class CBBsrPinNotifier(CBBsrPin):
 
 
 class CBRsrOutput(CBBsrPin):
-    def __init__(self, bsdl, pin, val = 0, verbose = False):
+    def __init__(self, bsdl, pin,
+                 val=0,
+                 cb=None, cb_parent=None,
+                 verbose=False):
+
         self.bsdl = bsdl
         self.pin = pin
         self.val = val
-        self.val_last = val
+        self.val_last = None
+        self.cb = cb
+        self.cb_parent = cb_parent
         self.verbose = verbose
 
         self.data_cell = self.bsdl.get_bsr_data_cell(self.pin +'_out')
@@ -100,7 +115,7 @@ class CBRsrOutput(CBBsrPin):
         return bsr
 
 
-    def set_val(self, val = True):
+    def set_val(self, val = 1):
         self.val = val
 
 
@@ -115,22 +130,24 @@ class CBRsrOutput(CBBsrPin):
 
         self.val_last = self.val
         bsr = bsr.set_bit(self.data_cell, self.val)
+
+        self.call_cb()
+
         return bsr
 
 
 
 class CBRsrOutputToggler(CBRsrOutput):
-    def __init__(self, bsdl, pin, toggle_time = 1, verbose = False):
-        self.bsdl = bsdl
-        self.pin = pin
+    def __init__(self, bsdl, pin, toggle_time=1, cb=None, cb_parent=None, verbose=False):
+        super().__init__(bsdl, pin, val=0, cb=cb, cb_parent=cb_parent, verbose=verbose)
+
         self.toggle_time = toggle_time
-        self.verbose = verbose
 
         self.data_cell = self.bsdl.get_bsr_data_cell(self.pin +'_out')
         self.ctrl_cell = self.bsdl.get_bsr_ctrl_cell(self.pin +'_out')
         self.disval = self.bsdl.get_bsr_disval(self.pin +'_out')
 
-        self.val = 0
+        # self.val = None
         self.last_toggle_time = time.time()
 
     def run_output(self, bsr):
@@ -142,6 +159,9 @@ class CBRsrOutputToggler(CBRsrOutput):
                 log.info(f'Pin {self.pin:<5s} set to {self.val}')
 
         bsr = bsr.set_bit(self.data_cell, self.val)
+
+        self.call_cb()
+
         return bsr
 
 
