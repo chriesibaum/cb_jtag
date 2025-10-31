@@ -18,11 +18,11 @@ dynamic = [
 files = ["requirements.txt"]
 
 [tool.hatch.version]
-path = "./__version__.py"
+path = "./cb_jtag/__init__.py"
 
 
 authors = [
-  { name="Thomas Popp", email="thomas@chriesibaum.com" },
+  { name="Thomas", email="thomas@chriesibaum.dev" },
 ]
 
 description = "Chriesibaum's jtag tools for boundary scan"
