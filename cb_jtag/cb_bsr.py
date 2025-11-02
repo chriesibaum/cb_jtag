@@ -8,6 +8,8 @@ class CBBsrPin():
     # def __init__(self):
         # self.cb = None
         # self.cb_parent = None
+    def __init__(self):
+        self.last_val = None
 
     def __str__(self):
         return self.__class__.__name__
@@ -16,6 +18,7 @@ class CBBsrPin():
         return bsr
 
     def deconfig(self, bsr, verbose = False):
+        self.last_val = None
         return bsr
 
     def run_input(self, bsr):
@@ -57,7 +60,6 @@ class CBBsrPinNotifier(CBBsrPin):
 
     def get_val(self):
         return self.val
-
 
     def run_input(self, bsr):
         self.val = bsr.get_bit(self.data_cell)
