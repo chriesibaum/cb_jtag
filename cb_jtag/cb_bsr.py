@@ -18,6 +18,9 @@ class CBBsrPin():
         return bsr
 
     def deconfig(self, bsr, verbose = False):
+        # Deconfigure pin
+        if self.verbose or verbose:
+            log.info(f'  Pin {self.pin} deconfigured')
         self.last_val = None
         return bsr
 
