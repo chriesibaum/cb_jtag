@@ -78,7 +78,6 @@ class CBBsrPinNotifier(CBBsrPin):
         return bsr
 
 
-
 class CBRsrOutput(CBBsrPin):
     def __init__(self, bsdl, pin,
                  val=0,
@@ -107,7 +106,10 @@ class CBRsrOutput(CBBsrPin):
 
         if ctrl_cell:
             bsr = bsr.set_bit(self.ctrl_cell, 1 ^ self.disval)
+
         bsr = bsr.set_bit(self.data_cell, self.val)
+
+        self.val_last = None
 
         return bsr
 
@@ -131,12 +133,13 @@ class CBRsrOutput(CBBsrPin):
     def run_output(self, bsr):
         if self.val != self.val_last:
             if self.verbose:
-                log.info(f'Pin {self.pin:<5s} set to {self.val}')
+                log.info(f'Output Pin {self.pin:<5s} set to {self.val}')
+
+            self.call_cb()
 
         self.val_last = self.val
-        bsr = bsr.set_bit(self.data_cell, self.val)
 
-        self.call_cb()
+        bsr = bsr.set_bit(self.data_cell, self.val)
 
         return bsr
 
@@ -152,36 +155,31 @@ class CBRsrOutputToggler(CBRsrOutput):
         self.ctrl_cell = self.bsdl.get_bsr_ctrl_cell(self.pin +'_out')
         self.disval = self.bsdl.get_bsr_disval(self.pin +'_out')
 
-        # self.val = None
         self.last_toggle_time = time.time()
 
     def run_output(self, bsr):
-        if time.time() - self.last_toggle_time > self.toggle_time:
+        if time.time() - self.last_toggle_time >= self.toggle_time:
             self.val ^= 1
             self.last_toggle_time = time.time()
 
-            if self.verbose:
-                log.info(f'Pin {self.pin:<5s} set to {self.val}')
-
-        bsr = bsr.set_bit(self.data_cell, self.val)
-
-        self.call_cb()
+        bsr = super().run_output(bsr)
 
         return bsr
 
 
 
 class CBBsr(threading.Thread):
-    def __init__(self, jtag, verbose = False):
+    def __init__(self, jtag, inst_extest = 0b00000, verbose = False):
         super(CBBsr, self).__init__()
         self.jtag = jtag
+        self.inst_extest = inst_extest
         self.verbose = verbose
 
         self.enable_flag = False
         self.run_flag = True
 
         # read the initial boundaray scan register
-        self.bsr_out = self.jtag.read_bsr(0, 0b00000)
+        self.bsr_out = self.jtag.read_bsr(0, self.inst_extest)
         if self.verbose:
             log.info('Initial boundary scan register (BSR):')
             log.info(f'  0x{self.bsr_out:076x}')
@@ -202,7 +200,7 @@ class CBBsr(threading.Thread):
         for pin in self.pins:
             self.bsr_out = pin.config(self.bsr_out, verbose=self.verbose)
 
-        self.bsr_in = self.jtag.write_bsr(0, 0b00000, self.bsr_out)
+        self.bsr_in = self.jtag.write_bsr(0, self.inst_extest, self.bsr_out)
 
     def deconfig_pins(self):
         if self.verbose:
@@ -211,7 +209,7 @@ class CBBsr(threading.Thread):
         for pin in self.pins:
             self.bsr_out = pin.deconfig(self.bsr_out, verbose=self.verbose)
 
-        self.bsr_in = self.jtag.write_bsr(0, 0b00000, self.bsr_out)
+        self.bsr_in = self.jtag.write_bsr(0, self.inst_extest, self.bsr_out)
 
     def enable(self):
         self.enable_flag = True
@@ -239,7 +237,7 @@ class CBBsr(threading.Thread):
             if self.verbose > 1:
                 log.info(f'bs_write:       0x{self.bsr_out:076x}')
 
-            self.bsr_in = self.jtag.write_bsr(0, 0b00000, self.bsr_out)
+            self.bsr_in = self.jtag.write_bsr(0, self.inst_extest, self.bsr_out)
 
             if self.verbose > 2:
                 log.info(f'bs_read:        0x{self.bsr_in:076x}')

@@ -1,17 +1,21 @@
 #!/bin/bash
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2025 Thomas@chriesibaum.dev
 
-if [ -d ".venv" ]; then
+VENV_DIR="/tmp/.venv_cb_jtag"
+
+
+if [ -d "$VENV_DIR" ]; then
     echo "Activating virtual environment..."
-    source .venv/bin/activate
+    source $VENV_DIR/bin/activate
 else
     echo "Virtual environment not found. Let's create it first."
-    python -m venv .venv
+    python -m venv $VENV_DIR
 
-    source .venv/bin/activate
+    source $VENV_DIR/bin/activate
 
     pip install --upgrade pip
     pip install -r requirements.txt
     echo "Virtual environment setup complete and ready to use."
 fi
-
 
