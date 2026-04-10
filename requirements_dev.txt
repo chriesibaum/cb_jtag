@@ -1,9 +1,0 @@
-pytest
-pytest-cov
-pyyaml
-pycodestyle
-autopep8
-bandit
-hatch
-twine
-flake8

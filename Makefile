@@ -56,4 +56,9 @@ clean:
 
 
 mr_proper: clean
+	@$(E) "cleaning up using Mr. Proper..."
 	@rm -rf ./$(BUILD_DIR)
+
+venv_clean:
+	@$(E) "cleaning up virtual environment..."
+	@rm -rf /tmp/cb_jtag
