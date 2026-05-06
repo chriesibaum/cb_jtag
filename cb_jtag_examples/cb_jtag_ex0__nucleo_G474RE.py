@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# cb_jtag demo for the NUCLEO-U575ZI-Q board
+# cb_jtag demo for the NUCLEO-G474RE board
 
 import time
 from cb_jtag import CBJtag
@@ -10,11 +10,11 @@ from cb_jtag import CBBsrPinNotifier
 from cb_jtag import CBRsrOutput
 from cb_jtag import CBRsrOutputToggler
 from cb_bsdl_parser import CBBsdl
-
+from cb_jtag.cb_jtag_probe import CBJtagProbe
 from key_stroke import *
 
 
-bsdl_file = './bsdl_files/lpc1857fet256_revA_20180227-v1.bsd'
+bsdl_file = './bsdl_files/STM32G471_473_474_483_484_LQFP64.bsdl'
 
 
 def pin_changed_cb(pin, val):
@@ -23,18 +23,27 @@ def pin_changed_cb(pin, val):
 
 def main():
     # Initialize J-Link connection
-    jlink = CBJLink()
-    jlink.easy_setup_emulator()
+
+    # select the probe/jtag adapter to use (J-Link or CBJtagProbe)
+    # probe = CBJLink()
+    # probe.easy_setup_emulator()
+
+    probe = CBJtagProbe()
 
     # Setup the JTAG interface for boundary-scan operations
-    jtag = CBJtag(jtag_iface=jlink, verbose=True)
+    jtag = CBJtag(jtag_probe=probe)
+
+    print(f'Probe Version: {jtag.get_probe_version()}')
+
     bsdl = CBBsdl(bsdl_file)
 
+    # Hold the reset pin low for STM32xxx
+    jtag.set_sys_reset_pin_low()
     # Reset the JTAG TAP controller
     jtag.tap_reset()
 
     # Get the number of TAPs in the JTAG chain
-    num_taps = jtag.get_num_taps()
+    num_taps = jtag.get_taps_in_chain()
     print(f'\nNumber of TAPs in JTAG chain: {num_taps}' )
 
     # Read and display the IDCODEs of all TAPs
@@ -46,47 +55,38 @@ def main():
 
 
     # Configure IR and BSR lengths based on BSDL file
-    jtag.set_ir_lengths([5])
+    jtag.set_ir_lengths([5, 4])
     jtag.set_bsr_lengths([bsdl.get_bsr_len(), 0])
 
     # Initialize boundary-scan register interface
-    b = CBBsr(jtag, verbose=1)
-
+    bsr = CBBsr(jtag, verbose=1, inst_extest=0b00000)
     # Configure pins for boundary-scan operations
-    led1_pin_tout = CBRsrOutputToggler(bsdl, 'P1_10', toggle_time=2.5,
-                                       verbose=True)
-    led1_pin_in = CBBsrPinNotifier(bsdl, 'P1_10', cb=pin_changed_cb)
-    b.add_pin(led1_pin_tout)
-    b.add_pin(led1_pin_in)
+    led_pin_tout = CBRsrOutputToggler(bsdl, 'PA5', toggle_time = 0.5)
+    led_pin_in = CBBsrPinNotifier(bsdl, 'PA5',  cb=pin_changed_cb)
+    btn_pin_in = CBBsrPinNotifier(bsdl, 'PC13', cb=pin_changed_cb)
 
-    led2_pin_out = CBRsrOutput(bsdl, 'P2_1', val=0, verbose=False)
-    b.add_pin(led2_pin_out)
-
-    led3_pin_out = CBRsrOutputToggler(bsdl, 'P1_11', toggle_time=0.1)
-    b.add_pin(led3_pin_out)
-
+    bsr.add_pin(led_pin_tout)
+    bsr.add_pin(led_pin_in)
+    bsr.add_pin(btn_pin_in)
 
     # Finally, configure and start the boundary-scan operations
-    b.config_pins()
-    b.start()
+    bsr.config_pins()
+    bsr.start()
+    bsr.enable()
 
-    led2_bit = 0
     k = KeyStroke()
     print('\nStarting boundary-scan operations')
     print('Press ESC to terminate!')
     while True:
-        led2_bit ^= 1
-        led2_pin_out.set_bit(led2_bit)
-
         # check whether a key from the list has been pressed
         if k.check(['\x1b', 'q', 'x']):
             break
         time.sleep(0.1)
 
     # Gracefully stop boundary-scan operations and clean up
-    b.stop()
-    b.deconfig_pins()
-    jlink.set_reset_pin_high()
+    bsr.stop()
+    bsr.deconfig_pins()
+    jtag.set_sys_reset_pin_high() # do do: move this function into CBJTAG class
     jtag.close()
 
 
