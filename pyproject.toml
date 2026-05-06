@@ -14,7 +14,7 @@ dynamic = [
 dependencies = [
   "pylink-square",
   "key_stroke",
-  "cb_bsdl_parser",
+  "cb_bsdl_parser>=0.9.0",
 ]
 authors = [
   { name="Thomas", email="thomas@chriesibaum.dev" },

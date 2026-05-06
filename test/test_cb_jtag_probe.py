@@ -1,18 +1,18 @@
 import pytest
-from cb_jtag.cb_jtag_iface_base import CBJtagIfaceBase
+from cb_jtag.cb_jtag_probe_base import CBJtagProbeBase
 from cb_jtag import CBJLink
 from cb_jtag import CBJtag
 from cb_jtag.cb_bsr import CBBsr
 
-class Test_CBJtagIfaceBase:
+class Test_CBJtagProbeBase:
 
     def test_000_instance(self):
-        iface = CBJtagIfaceBase()
-        assert iface is not None, "CBJtagIfaceBase instance is None"
-        assert isinstance(iface, CBJtagIfaceBase), "CBJtagIfaceBase instance is not of type CBJtagIfaceBase"
+        iface = CBJtagProbeBase()
+        assert iface is not None, "CBJtagProbeBase instance is None"
+        assert isinstance(iface, CBJtagProbeBase), "CBJtagProbeBase instance is not of type CBJtagProbeBase"
 
     def test_010_methods(self):
-        iface = CBJtagIfaceBase()
+        iface = CBJtagProbeBase()
 
         with pytest.raises(NotImplementedError):
             iface.jtag_write_read(b'\x00', b'\x00', b'\x00', 8)
@@ -25,7 +25,7 @@ class Test_CBJtagIfaceBase:
 
 
 
-class CBJtagDummyIface(CBJtagIfaceBase):
+class CBJtagDummyIface(CBJtagProbeBase):
     def jtag_write_read(self, tdi_buf, tdo_buf, tms_buf, n_bits):
         return 0
 

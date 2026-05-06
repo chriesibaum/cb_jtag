@@ -25,7 +25,7 @@ test:
 	@$(E) "running tests..."
 # 	pytest -v -rP test/test_0.py::Test_Nucleo_G474RE
 	coverage run    -m pytest -v -rP ./test/test_0_cb_bit.py
-	coverage run -a -m pytest -v -rP ./test/test_cb_jtag_iface.py
+	coverage run -a -m pytest -v -rP ./test/test_cb_jtag_probe.py
 	coverage run -a -m pytest -v -rP ./test/test_0_nucleo_G474RE.py
 
 	# 	coverage run -m pytest -v -rP test/test_0_board_LPC1837.py
@@ -39,7 +39,7 @@ build:
 
 
 install: build
-	@pip install dist/cb_jtag*.whl --force-reinstall
+	@uv pip install dist/cb_jtag*.whl --force-reinstall
 
 
 deploy: build

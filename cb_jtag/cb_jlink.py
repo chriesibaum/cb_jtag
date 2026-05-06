@@ -1,19 +1,34 @@
+import ctypes
 import sys
 
 from pylink import JLink
 from pylink import enums
 
-from .cb_jtag_iface_base import CBJtagIfaceBase
+from .cb_jtag_probe_base import CBJtagProbeBase
 from .cb_jtag import CBJtagError
 
 import logging
 log = logging.getLogger(__name__)
 
-class CBJLink(JLink, CBJtagIfaceBase):
+class CBJLink(JLink, CBJtagProbeBase):
 
     def __init__(self, lib=None):
         super().__init__(lib=lib)
 
+    def get_version(self):
+        """Get the version of the J-Link DLL.
+        Returns:
+            str: The version string of the J-Link DLL.
+        """
+        version = f'{self.version}'
+        return version
+
+
+    def set_sys_reset_pin_high(self):
+        self.set_reset_pin_high()
+
+    def set_sys_reset_pin_low(self):
+        self.set_reset_pin_low()
 
     def jtag_write_read(self,
                         tdi_buf,
@@ -21,8 +36,10 @@ class CBJLink(JLink, CBJtagIfaceBase):
                         tms_buf,
                         n_bits):
 
+        ctdo_buf = (ctypes.c_ubyte * len(tdo_buf))()
+
         res = self._dll.JLINKARM_JTAG_StoreGetRaw(tdi_buf,
-                                                  tdo_buf,
+                                                  ctdo_buf,
                                                   tms_buf,
                                                   n_bits)
         if res < 0:         # pragma: no cover
@@ -33,16 +50,9 @@ class CBJLink(JLink, CBJtagIfaceBase):
         if res < 0:         # pragma: no cover
             raise CBJtagError(f'dll call JLINKARM_JTAG_SyncBits failed with error code: {res}')
 
-    # todo: @SEGGER: would be nice to have a JLINKARM_JTAG_Reset() function
-    # def sys_reset(self, reset_delay_ms=100):
-    #     """Reset the JTAG interface."""
-
-    #     self._dll.JLINK_SetResetDelay(reset_delay_ms)
-
-    #     res = self._dll.JLINK_JTAG_Reset()
-    #     if res < 0:
-    #         raise errors.JLinkException(res)
-
+        # Copy the data from the ctypes buffer to the provided tdo_buf
+        # todo: @SEGGER: would be nice if the JLINKARM_JTAG_StoreGetRaw function could write directly into a provided buffer to avoid this copy step
+        tdo_buf[:] = ctdo_buf[:len(tdo_buf)]
 
 
     def easy_setup_emulator(self, speed=4000):

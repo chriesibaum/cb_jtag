@@ -1,13 +1,21 @@
-class CBJtagIfaceBase():
+class CBJtagProbeBase():
   def __init__(self):
      pass
+
+  def close(self):
+      """Close the JTAG probe."""
+      raise NotImplementedError("This method should be implemented by subclasses.")
+
+  def get_version(self):
+      """Get the version of the JTAG probe."""
+      raise NotImplementedError("This method should be implemented by subclasses.")
 
   def jtag_write_read(self,
                       tdi_buf,
                       tdo_buf,
                       tms_buf,
                       n_bits):
-      """Send TDI and TMS data to the JTAG interface and get TDO data back.
+      """Send TDI and TMS data to the JTAG probe and get TDO data back.
 
       Args:
         tdi_buf (bytes): The TDI data to send.
@@ -23,24 +31,19 @@ class CBJtagIfaceBase():
       """
       raise NotImplementedError("This method should be implemented by subclasses.")
 
-
-  def close(self):
-      """Close the JTAG interface."""
+  def set_sys_reset_pin_low(self):
+      """Set the reset pin low."""
       raise NotImplementedError("This method should be implemented by subclasses.")
 
-  # def set_sys_reset_pin_low(self):
-  #     """Set the reset pin low."""
-  #     raise NotImplementedError("This method should be implemented by subclasses.")
-
-  # def set_sys_reset_pin_high(self):
-  #     """Set the reset pin high."""
-  #     raise NotImplementedError("This method should be implemented by subclasses.")
+  def set_sys_reset_pin_high(self):
+      """Set the reset pin high."""
+      raise NotImplementedError("This method should be implemented by subclasses.")
 
   # def sys_reset(self):
-  #     """Reset the JTAG interface."""
+  #     """Reset the JTAG probe."""
   #     raise NotImplementedError("This method should be implemented by subclasses.")
 
   def jtag_flush(self):
-      """Flush the JTAG interface."""
+      """Flush the JTAG probe."""
       raise NotImplementedError("This method should be implemented by subclasses.")
 

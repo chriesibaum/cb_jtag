@@ -1,8 +1,7 @@
-
 import math
 import ctypes
 import time
-from .cb_jtag_iface_base import CBJtagIfaceBase
+from .cb_jtag_probe_base import CBJtagProbeBase
 from .cb_jtag_fsm import Tap_FSM_State
 from .cb_bit import CBBit
 
@@ -22,32 +21,31 @@ class CBJtag():
     This class provides methods to control the JTAG TAP state machine, set instruction lengths,
     reset the TAP, and perform JTAG operations like reading and writing data."""
 
-    def __init__(self, jtag_iface, verbose=False):
+    def __init__(self, jtag_probe, verbose=False):
         """Initialize the JTAG interface.
         Args:
-            jtag_iface (CBJtagIfaceBase): An instance of a JTAG interface class
-                (e.g., CBJLink) that implements the CBJtagIfaceBase interface.
+            jtag_probe (CBJtagProbeBase): An instance of a JTAG interface class
+                (e.g., CBJtagProbe, CBJLink) that implements the CBJtagProbeBase interface.
         Raises:
             CBJtagError: If the JTAG interface is not properly initialized.
         """
 
-        self.jtag_iface = None
+        self.jtag_probe = None
 
-        if not isinstance(jtag_iface, CBJtagIfaceBase):
-            raise CBJtagError("Invalid JTAG interface provided. Must be an instance of CBJtagIfaceBase.")
+        if not isinstance(jtag_probe, CBJtagProbeBase):
+            raise CBJtagError("Invalid JTAG interface provided. Must be an instance of CBJtagProbeBase.")
 
         self.verbose = verbose
 
-        self.jtag_iface = jtag_iface
+        self.jtag_probe = jtag_probe
 
-        self.num_taps = None
+        self.taps_in_chain = None
 
         self.ir_lengths = []
         self.total_ir_len = None
 
         # ensure the JTAG interface is flushed and empty
-        self.jtag_iface.jtag_flush()
-        # self.jtag_iface.sys_reset()   -> rest not available from J-Link!!!
+        self.jtag_probe.jtag_flush()
 
         # Reset the TAP state machine to the "Test Logic Reset" state
         # since we have no TRST pin this is the only way to reset the TAP
@@ -61,8 +59,8 @@ class CBJtag():
 
     def close(self):
         """Close the JTAG interface."""
-        if self.jtag_iface is not None:
-            self.jtag_iface.close()
+        if self.jtag_probe is not None:
+            self.jtag_probe.close()
 
     def set_verbose(self, verbose):
         """Set the verbosity level for debugging output.
@@ -71,15 +69,32 @@ class CBJtag():
         """
         self.verbose = verbose
 
+    def get_probe_version(self):
+        """Get the version of the JTAG interface.
+        Returns:
+            str: The version string of the JTAG interface.
+        """
+        return self.jtag_probe.get_version()
+
+    def set_sys_reset_pin_high(self):
+        """Set the system reset pin high."""
+        self.jtag_probe.set_sys_reset_pin_high()
+
+    def set_sys_reset_pin_low(self):
+        """Set the system reset pin low."""
+        self.jtag_probe.set_sys_reset_pin_low()
+
+
     def tap_reset(self):
         """Reset the TAP state machine to the "Test Logic Reset" state."""
 
         n_bits = 5
         tms_buf = bytes([0b11111])
         tdi_buf = bytes([0b00000])
-        tdo_buf = (ctypes.c_ubyte * 1)()
+        # tdo_buf = (ctypes.c_ubyte * 1)()
+        tdo_buf = bytearray(len(tdi_buf))
 
-        self.jtag_iface.jtag_write_read(tdi_buf,
+        self.jtag_probe.jtag_write_read(tdi_buf,
                                         tdo_buf,
                                         tms_buf,
                                         n_bits)
@@ -102,9 +117,12 @@ class CBJtag():
             tms_buf = bytes([0b001])
             tdi_buf = bytes([0b000])
 
-        tdo_buf = (ctypes.c_ubyte * 1)()
+        #tdo_buf = (ctypes.c_ubyte * 1)()
+        tdo_buf = bytearray(len(tdi_buf))
 
-        self.jtag_iface.jtag_write_read(tdi_buf,
+         # send the command to the J-Link
+
+        self.jtag_probe.jtag_write_read(tdi_buf,
                                         tdo_buf,
                                         tms_buf,
                                         n_bits)
@@ -122,10 +140,11 @@ class CBJtag():
             tms_buf = bytes([0b0011])
             tdi_buf = bytes([0b0000])
 
-        tdo_buf = (ctypes.c_ubyte * 1)()
+        #tdo_buf = (ctypes.c_ubyte * 1)()
+        tdo_buf = bytearray(len(tdi_buf))
 
         # send the command to the J-Link
-        self.jtag_iface.jtag_write_read(tdi_buf,
+        self.jtag_probe.jtag_write_read(tdi_buf,
                                         tdo_buf,
                                         tms_buf,
                                         n_bits)
@@ -136,9 +155,10 @@ class CBJtag():
 
         tms_buf = bytes([tms])
         tdi_buf = bytes([0x00])
-        tdo_buf = (ctypes.c_ubyte * 1)()
+        # tdo_buf = (ctypes.c_ubyte * 1)()
+        tdo_buf = bytearray(len(tdi_buf))
 
-        self.jtag_iface.jtag_write_read(tdi_buf,
+        self.jtag_probe.jtag_write_read(tdi_buf,
                                         tdo_buf,
                                         tms_buf,
                                         n_bits)
@@ -147,17 +167,18 @@ class CBJtag():
 
 
 
-    def get_num_taps(self):
+    def get_taps_in_chain(self):
         self.tap_goto_shift_ir()
 
         # clk in 1 to set all TAP's into bypass mode
-        num_bytes = 128
+        num_bytes = 64
         tms_buf = bytes([0x00] * num_bytes)
         tdi_buf = bytes([0xff] * num_bytes)
-        tdo_buf = (ctypes.c_ubyte * num_bytes)()
+        # tdo_buf = (ctypes.c_ubyte * num_bytes)()
+        tdo_buf = bytearray(len(tdi_buf))
         n_bits = len(tms_buf) * 8
 
-        self.jtag_iface.jtag_write_read(tdi_buf,
+        self.jtag_probe.jtag_write_read(tdi_buf,
                                         tdo_buf,
                                         tms_buf,
                                         n_bits)
@@ -166,10 +187,11 @@ class CBJtag():
         # to go to Exit1-IR
         tms_buf = bytes([0b1])
         tdi_buf = bytes([0b1])
-        tdo_buf = (ctypes.c_ubyte * 1)()
+        # tdo_buf = (ctypes.c_ubyte * 1)()
+        tdo_buf = bytearray(len(tdi_buf))
         n_bits = 1
 
-        self.jtag_iface.jtag_write_read(tdi_buf,
+        self.jtag_probe.jtag_write_read(tdi_buf,
                                         tdo_buf,
                                         tms_buf,
                                         n_bits)
@@ -179,9 +201,10 @@ class CBJtag():
         n_bits = 4
         tms_buf = bytes([0b0011])
         tdi_buf = bytes([0b0000])
-        tdo_buf = (ctypes.c_ubyte * 1)()
+        # tdo_buf = (ctypes.c_ubyte * 1)()
+        tdo_buf = bytearray(len(tdi_buf))
 
-        self.jtag_iface.jtag_write_read(tdi_buf,
+        self.jtag_probe.jtag_write_read(tdi_buf,
                                         tdo_buf,
                                         tms_buf,
                                         n_bits)
@@ -190,10 +213,11 @@ class CBJtag():
         num_bytes = 128
         tms_buf = bytes([0x00] * num_bytes)
         tdi_buf = bytes([0x00] * num_bytes)
-        tdo_buf = (ctypes.c_ubyte * num_bytes)()
+        #tdo_buf = (ctypes.c_ubyte * num_bytes)()
+        tdo_buf = bytearray(len(tdi_buf))
         n_bits = len(tms_buf)
 
-        self.jtag_iface.jtag_write_read(tdi_buf,
+        self.jtag_probe.jtag_write_read(tdi_buf,
                                         tdo_buf,
                                         tms_buf,
                                         n_bits)
@@ -203,11 +227,12 @@ class CBJtag():
         n_bits = 1
         tms_buf = bytes([0b0])
         tdi_buf = bytes([0b1])
-        tdo_buf = (ctypes.c_ubyte * 1)()
+        # tdo_buf = (ctypes.c_ubyte * 1)()
+        tdo_buf = bytearray(len(tdi_buf))
 
         i = 0
         while True:
-            self.jtag_iface.jtag_write_read(tdi_buf,
+            self.jtag_probe.jtag_write_read(tdi_buf,
                                             tdo_buf,
                                             tms_buf,
                                             n_bits)
@@ -215,11 +240,11 @@ class CBJtag():
             x = int.from_bytes(bytearray(tdo_buf), 'little')
 
             if x == 1:
-                self.num_taps = i
-                return(self.num_taps)
+                self.taps_in_chain = i
+                return(self.taps_in_chain)
 
             if i > MAX_TAPS_IN_CHAIN:       # pragma: no cover
-                self.num_taps = 0
+                self.taps_in_chain = 0
                 raise CBJtagError(f"Too many TAPs in chain detected (> {MAX_TAPS_IN_CHAIN}) - aborting")
             i += 1
 
@@ -265,22 +290,24 @@ class CBJtag():
         n_bytes = math.ceil(n_bits / 8)
         tms_buf = bytes([0x00] * n_bytes)  # Keep TMS low to stay in Shift-IR
         tdi_buf = bytes([0xFF] * n_bytes)  # Fill with all 1s
-        tdo_buf = (ctypes.c_ubyte * n_bytes)()
+        #tdo_buf = (ctypes.c_ubyte * n_bytes)()
+        tdo_buf = bytearray(len(tdi_buf))
 
-        self.jtag_iface.jtag_write_read(tdi_buf, tdo_buf, tms_buf, n_bits)
+        self.jtag_probe.jtag_write_read(tdi_buf, tdo_buf, tms_buf, n_bits)
 
         # Now shift in 0s one bit at a time and count until we see a 0 at TDO
         # The number of shifts needed equals the total IR length
         n_bits = 1
         tms_buf = bytes([0x00])  # Keep TMS low to stay in Shift-IR
         tdi_buf = bytes([0x00])  # Shift in 0s
-        tdo_buf = (ctypes.c_ubyte * 1)()
+        # tdo_buf = (ctypes.c_ubyte * 1)()
+        tdo_buf = bytearray(len(tdi_buf))
 
         ir_length = 0
         max_attempts = 512  # Safety limit
 
         for i in range(max_attempts):
-            self.jtag_iface.jtag_write_read(tdi_buf, tdo_buf, tms_buf, n_bits)
+            self.jtag_probe.jtag_write_read(tdi_buf, tdo_buf, tms_buf, n_bits)
 
             # Check if we got a 0 at TDO (the first 1 we shifted in earlier)
             tdo_bit = int.from_bytes(bytearray(tdo_buf), 'little') & 1
@@ -314,12 +341,13 @@ class CBJtag():
         tms_buf = bytes([0x00, 0x00, 0x00, 0x00])
 
         num_bytes = 4
-        tdo_buf = (ctypes.c_ubyte * num_bytes)()
+        #tdo_buf = (ctypes.c_ubyte * num_bytes)()
+        tdo_buf = bytearray(len(tdi_buf))
 
         self.idcodes = []
         for i in range(num_taps):
 
-            self.jtag_iface.jtag_write_read(tdi_buf,
+            self.jtag_probe.jtag_write_read(tdi_buf,
                                             tdo_buf,
                                             tms_buf,
                                             n_bits)
@@ -342,7 +370,7 @@ class CBJtag():
         Raises:
             JLinkException: on error.
         """
-        if tap_num >= self.num_taps:    # pragma: no cover - todo: add some test
+        if tap_num >= self.taps_in_chain:    # pragma: no cover - todo: add some test
             raise CBJtagError('Invalid TAP number')
 
 
@@ -371,9 +399,10 @@ class CBJtag():
         n_bytes = math.ceil(self.total_ir_len / 8)
         tms_buf = tms.to_bytes(n_bytes, byteorder='little')
         tdi_buf = tdi.to_bytes(n_bytes, byteorder='little')
-        tdo_buf = (ctypes.c_ubyte * n_bytes)()
+        #tdo_buf = (ctypes.c_ubyte * n_bytes)()
+        tdo_buf = bytearray(len(tdi_buf))
 
-        self.jtag_iface.jtag_write_read(tdi_buf,
+        self.jtag_probe.jtag_write_read(tdi_buf,
                                         tdo_buf,
                                         tms_buf,
                                         n_bits)
@@ -399,16 +428,16 @@ class CBJtag():
         n_bytes = math.ceil(n_bits / 8)
         tms_buf = bytes([0x00] * n_bytes)
         tdi_buf = bytes([0x00] * n_bytes)
-        tdo_buf = (ctypes.c_ubyte * n_bytes)()
+        #tdo_buf = (ctypes.c_ubyte * n_bytes)()
+        tdo_buf = bytearray(len(tdi_buf))
 
-
-        self.jtag_iface.jtag_write_read(tdi_buf,
+        self.jtag_probe.jtag_write_read(tdi_buf,
                                         tdo_buf,
                                         tms_buf,
                                         n_bits)
 
 
-        boundary_scan = int.from_bytes(bytearray(tdo_buf), 'little') >> (self.num_taps -1)
+        boundary_scan = int.from_bytes(bytearray(tdo_buf), 'little') >> (self.taps_in_chain -1)
         boundary_scan = CBBit(boundary_scan)
 
         # go to RUN-Test/Idle state
@@ -436,21 +465,22 @@ class CBJtag():
         # go to Exit1-DR at the end
         tms = 1 << (n_bits - 1)
         if self.verbose:
-            self.info(f'tms:           0x{tms:0{n_bytes}x}')
+            log.info(f'tms:           0x{tms:0{n_bytes}x}')
 
         # prepare and load the buffers
         tms_buf = tms.to_bytes(n_bytes, byteorder='little')
         tdi_buf = dr.to_bytes(n_bytes, byteorder='little')
-        tdo_buf = (ctypes.c_ubyte * n_bytes)()
+        #tdo_buf = (ctypes.c_ubyte * n_bytes)()
+        tdo_buf = bytearray(len(tdi_buf))
 
         # clk data into the DR
-        self.jtag_iface.jtag_write_read(tdi_buf,
+        self.jtag_probe.jtag_write_read(tdi_buf,
                                         tdo_buf,
                                         tms_buf,
                                         n_bits)
 
 
-        boundary_scan = int.from_bytes(bytearray(tdo_buf), 'little') >> (self.num_taps -1)
+        boundary_scan = int.from_bytes(bytearray(tdo_buf), 'little') >> (self.taps_in_chain -1)
         boundary_scan = CBBit(boundary_scan)
 
         # go to RUN-Test/Idle state

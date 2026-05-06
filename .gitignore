@@ -5,3 +5,5 @@ old/
 cb_jtag/__pycache__/
 
 dist/
+
+.DS_Store

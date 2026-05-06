@@ -9,6 +9,9 @@ class Test_Nucleo_G474RE(CBJtagBase):
     bsdl_file = './bsdl_files/STM32G471_473_474_483_484_LQFP64.bsdl'
     exp_num_taps = 2
     exp_idcodes = [0x4BA00477, 0x16469041]
+    exp_num_taps = 2
+
+    roundtrip_delay = 0.4
 
     def setup_io(self):
         self.led_PA5_pin = ''
@@ -54,7 +57,8 @@ class Test_Nucleo_G474RE(CBJtagBase):
         time.sleep(1)
 
         assert self.led_PA5_pin == 'PA5', 'LED PA5 callback not called'
-        assert self.led_PA5_toggling >= 5, 'LED PA5 did not toggle'
+        assert self.led_PA5_toggling >= 5, \
+            f'LED PA5 did not toggle as expected, toggling count: {self.led_PA5_toggling}'
 
     def test_021_pin_roundtrip(self):
         print('Testing pin roundtrip PC4 -> PC5')
@@ -63,12 +67,12 @@ class Test_Nucleo_G474RE(CBJtagBase):
             print(f' Roundtrip test iteration {i}')
             # Set PC4 high
             self.pc4_out.set_val(1)
-            time.sleep(0.2)
+            time.sleep(self.roundtrip_delay)
             assert self.pc5_in.val == 1, 'PC5 did not read high when PC4 set high'
 
             # Set PC4 low
             self.pc4_out.set_val(0)
-            time.sleep(0.2)
+            time.sleep(self.roundtrip_delay)
             assert self.pc5_in.val == 0, 'PC5 did not read low when PC4 set low'
 
 
@@ -77,12 +81,12 @@ class Test_Nucleo_G474RE(CBJtagBase):
         print('Testing pin set/clear on PC4 -> PC5')
         # Set PC4 (set high)
         self.pc4_out.set_val(1)
-        time.sleep(0.2)
+        time.sleep(self.roundtrip_delay)
         assert self.pc5_in.get_val() == 1, 'PC5 did not read high when PC4 set'
 
         # Clear PC4 (set low)
         self.pc4_out.clear_val()
-        time.sleep(0.2)
+        time.sleep(self.roundtrip_delay)
         assert self.pc5_in.get_val() == 0, 'PC5 did not read low when PC4 cleared'
 
     def test_030_callbacks(self):
@@ -97,12 +101,12 @@ class Test_Nucleo_G474RE(CBJtagBase):
         self.pc5_in.set_cb(callback)
 
         self.pc4_out.set_val(1)
-        time.sleep(0.2)
+        time.sleep(self.roundtrip_delay)
         assert self.pc5_in.val == 1, 'PC5 did not read high when PC4 set high'
         assert self.pc5_in_cb_val == 1, 'PC5 callback not called on high'
 
         self.pc4_out.clear_val()
-        time.sleep(0.2)
+        time.sleep(self.roundtrip_delay)
         assert self.pc5_in.val == 0, 'PC5 did not read low when PC4 set low'
         assert self.pc5_in_cb_val == 0, 'PC5 callback not called on low'
 
