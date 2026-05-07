@@ -10,3 +10,27 @@ Chriesibaum's JTAG Boundary Scan Module
 [![Coverage Status](https://raw.githubusercontent.com/chriesibaum/cb_jtag/refs/heads/main/doc/coverage-badge.svg)]()
 
 </h1>
+
+The Chriesibaum JTAG Module provides JTAG functionality to run boundary scan operations in python.
+
+# Getting Started
+
+- clone this repo
+- set the environment up by running ```. envsetup.sh```
+- run some examples
+- have fun!
+
+
+
+## About Café - The Heart of Coding! ;-)
+
+Do you like this project and want to support it?
+I appreciate every single Café – it keeps me going!
+You can also sponsor the project on
+[github sponsors](https://github.com/sponsors/chriesibaum/)? Thanks for your support!
+
+<div align="center">
+<a href="https://www.buymeacoffee.com/chriesibaum" target="_blank">
+<img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
+
+</div>
