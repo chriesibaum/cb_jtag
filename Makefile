@@ -1,6 +1,10 @@
 
 BUILD_DIR := ./dist
 
+COV_RESULT:= ./reports/junit/junit.xml
+COV_REPORT:= ./reports/coverage_html/index.html ./reports/coverage/coverage.xml
+DOC_BADGES:= ./doc/tests-badge.svg ./doc/coverage-badge.svg
+
 # tools
 E := @echo
 PYCODESTYLE := pycodestyle
@@ -19,17 +23,27 @@ BANDIT_FLAGS := --format custom --msg-template \
 
 HATCH := hatch
 
+doc: badges
 
 .PHONY: test
-test:
+test: $(COV_RESULT)
+$(COV_RESULT):
 	@$(E) "running tests..."
-	coverage run    -m pytest -v -rP ./test/test_0_cb_bit.py
-	coverage run -a -m pytest -v -rP ./test/test_cb_jtag_probe.py
-	coverage run -a -m pytest -v -rP ./test/test_0_nucleo_G474RE.py
+	coverage run    -m pytest -v -rP ./test/test_0_cb_bit.py			 --junit-xml=./reports/junit/junit.xml
+	coverage run -a -m pytest -v -rP ./test/test_cb_jtag_probe.py		 --junit-xml=./reports/junit/junit.xml
+	coverage run -a -m pytest -v -rP ./test/test_0_nucleo_G474RE.py		 --junit-xml=./reports/junit/junit.xml
 
-cov_report: test
+cov_report: $(COV_REPORT)
+$(COV_REPORT): $(COV_RESULT)
 	coverage report -m
-	coverage html
+	coverage html -d ./reports/coverage_html
+	coverage xml -o ./reports/coverage/coverage.xml
+
+badges: $(DOC_BADGES)
+$(DOC_BADGES): $(COV_RESULT) $(COV_REPORT)
+	@echo "Generating coverage badge..."
+	@genbadge tests --output-file ./doc/tests-badge.svg
+	@genbadge coverage --output-file ./doc/coverage-badge.svg
 
 build:
 	$(HATCH) build
@@ -49,8 +63,8 @@ clean:
 	@rm -rf ./__pycache__
 	@rm -rf ./*/__pycache__
 	@rm -rf ./htmlcov
+	@rm -rf ./reports/
 	@rm -f ./.coverage
-
 
 mr_proper: clean
 	@$(E) "cleaning up using Mr. Proper..."

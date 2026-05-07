@@ -44,6 +44,7 @@ dev = [
   "hatch",
   "twine",
   "flake8",
+  "genbadge[all]",
 ]
 
 [tool.hatch.version]
