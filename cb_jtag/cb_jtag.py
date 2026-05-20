@@ -40,6 +40,7 @@ class CBJtag():
         self.jtag_probe = jtag_probe
 
         self.taps_in_chain = None
+        self.target_device_tap = None
 
         self.ir_lengths = []
         self.total_ir_len = None
