@@ -76,6 +76,20 @@ class CBJtag():
         """
         return self.jtag_probe.get_version()
 
+    def get_probe_id(self):
+        """Get the device ID of the JTAG interface.
+        Returns:
+            str: The device ID string of the JTAG interface.
+        """
+        return self.jtag_probe.get_device_id()
+
+    def get_probe_id_str(self):
+        """Get the device ID of the JTAG interface as a human-readable string.
+        Returns:
+            str: The device ID string of the JTAG interface.
+        """
+        return self.jtag_probe.get_device_id_str()
+
     def set_sys_reset_pin_high(self):
         """Set the system reset pin high."""
         self.jtag_probe.set_sys_reset_pin_high()
@@ -495,18 +509,17 @@ class CBJtag():
 
         # set the TAP to OPCODE and read the BS register
         self.instr(tap_num, opcode)
-        time.sleep(0.01)
         bsr = self.read_dr(self.bsr_lengths[tap_num])
 
         return bsr
 
-    def write_bsr(self, tap_num, opcode, bsr):
+    def write_bsr(self, tap_num, opcode, bsr, write_instr=True):
         """Writes to the boundary scan register (BSR) of the JTAG TAP.
         """
 
         # set the TAP to OPCODE and write the BS register
-        self.instr(tap_num, opcode)
-        time.sleep(0.01)
+        if write_instr:
+            self.instr(tap_num, opcode)
         bsr = self.write_dr(self.bsr_lengths[tap_num], bsr)
 
         return bsr

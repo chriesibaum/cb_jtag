@@ -225,6 +225,7 @@ class CBBsr(threading.Thread):
 
 
     def run(self):
+        write_intr = True
         while self.run_flag:
             while not self.enable_flag:
                 if self.run_flag == False:
@@ -237,7 +238,8 @@ class CBBsr(threading.Thread):
             if self.verbose > 1:
                 log.info(f'bs_write:       0x{self.bsr_out:076x}')
 
-            self.bsr_in = self.jtag.write_bsr(0, self.inst_extest, self.bsr_out)
+            self.bsr_in = self.jtag.write_bsr(0, self.inst_extest, self.bsr_out, write_intr)
+            write_intr = False  # only write the instruction in the first iteration, then keep it for subsequent iterations
 
             if self.verbose > 2:
                 log.info(f'bs_read:        0x{self.bsr_in:076x}')
@@ -247,7 +249,7 @@ class CBBsr(threading.Thread):
                 pin.run_input(self.bsr_in)
 
 
-            time.sleep(0.001)
+            time.sleep(0.0001)   # adjust this sleep time as needed to balance CPU usage and responsiveness
 
 
 
