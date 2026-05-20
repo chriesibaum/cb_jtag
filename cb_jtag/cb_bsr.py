@@ -179,7 +179,7 @@ class CBBsr(threading.Thread):
         self.run_flag = True
 
         # read the initial boundaray scan register
-        self.bsr_out = self.jtag.read_bsr(0, self.inst_extest)
+        self.bsr_out = self.jtag.read_bsr(self.inst_extest)
         if self.verbose:
             log.info('Initial boundary scan register (BSR):')
             log.info(f'  0x{self.bsr_out:076x}')
@@ -200,7 +200,7 @@ class CBBsr(threading.Thread):
         for pin in self.pins:
             self.bsr_out = pin.config(self.bsr_out, verbose=self.verbose)
 
-        self.bsr_in = self.jtag.write_bsr(0, self.inst_extest, self.bsr_out)
+        self.bsr_in = self.jtag.write_bsr(self.inst_extest, self.bsr_out)
 
     def deconfig_pins(self):
         if self.verbose:
@@ -209,7 +209,7 @@ class CBBsr(threading.Thread):
         for pin in self.pins:
             self.bsr_out = pin.deconfig(self.bsr_out, verbose=self.verbose)
 
-        self.bsr_in = self.jtag.write_bsr(0, self.inst_extest, self.bsr_out)
+        self.bsr_in = self.jtag.write_bsr(self.inst_extest, self.bsr_out)
 
     def enable(self):
         self.enable_flag = True
@@ -238,7 +238,7 @@ class CBBsr(threading.Thread):
             if self.verbose > 1:
                 log.info(f'bs_write:       0x{self.bsr_out:076x}')
 
-            self.bsr_in = self.jtag.write_bsr(0, self.inst_extest, self.bsr_out, write_intr)
+            self.bsr_in = self.jtag.write_bsr(self.inst_extest, self.bsr_out, write_intr)
             write_intr = False  # only write the instruction in the first iteration, then keep it for subsequent iterations
 
             if self.verbose > 2:

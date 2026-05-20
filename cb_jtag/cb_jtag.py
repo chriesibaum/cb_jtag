@@ -262,6 +262,18 @@ class CBJtag():
                 raise CBJtagError(f"Too many TAPs in chain detected (> {MAX_TAPS_IN_CHAIN}) - aborting")
             i += 1
 
+    def set_target_device_tap(self, tap_num):
+        """Set the target device TAP index for subsequent operations.
+        Args:
+            tap_num (int): The index of the TAP corresponding to the target device in the JTAG chain.
+        Raises:
+            CBJtagError: If the specified TAP index is invalid (e.g., greater than the number of TAPs in the chain).
+        """
+        if tap_num >= self.taps_in_chain:
+            raise CBJtagError('Invalid TAP number')
+
+        self.target_device_tap = tap_num
+
     def set_ir_lengths(self, ir_lengths):
         """Set the IR lengths for each TAP in the JTAG chain.
         Args:
@@ -358,35 +370,30 @@ class CBJtag():
         #tdo_buf = (ctypes.c_ubyte * num_bytes)()
         tdo_buf = bytearray(len(tdi_buf))
 
-        self.idcodes = []
+        self.idcodes = [0] * num_taps
         for i in range(num_taps):
-
             self.jtag_probe.jtag_write_read(tdi_buf,
                                             tdo_buf,
                                             tms_buf,
                                             n_bits)
 
             idcode = int.from_bytes(bytearray(tdo_buf), 'little')
-            self.idcodes.append(idcode)
+
+            # the first read idcode corresponds to the last TAP in the chain,
+            # so we store it in reverse order
+            self.idcodes[num_taps-i-1] = idcode
 
         return self.idcodes
 
-    def instr(self, tap_num, opcode):
+    def instr(self, opcode):
         """Sends an instruction to the specified TAP.
 
         Args:
-            tap_num (int): the index of the TAP to send the instruction to.
             opcode (int): the instruction to send.
 
-        Returns:
-            ``None``
-
         Raises:
-            JLinkException: on error.
+            ProbeException: on error.
         """
-        if tap_num >= self.taps_in_chain:    # pragma: no cover - todo: add some test
-            raise CBJtagError('Invalid TAP number')
-
 
         self.tap_goto_shift_ir()
 
@@ -394,9 +401,9 @@ class CBJtag():
         tdi = 0
         tdi = (1 << self.total_ir_len) -1
 
-        opcode_pos = self.total_ir_len - sum(self.ir_lengths[:tap_num+1])
+        opcode_pos = self.total_ir_len - sum(self.ir_lengths[:self.target_device_tap+1])
 
-        for i in range(self.ir_lengths[tap_num]):
+        for i in range(self.ir_lengths[self.target_device_tap]):
             bit = (opcode >> i) & 1
             if bit:
                 tdi |=  (1 << (i+opcode_pos))
@@ -484,7 +491,6 @@ class CBJtag():
         # prepare and load the buffers
         tms_buf = tms.to_bytes(n_bytes, byteorder='little')
         tdi_buf = dr.to_bytes(n_bytes, byteorder='little')
-        #tdo_buf = (ctypes.c_ubyte * n_bytes)()
         tdo_buf = bytearray(len(tdi_buf))
 
         # clk data into the DR
@@ -503,23 +509,23 @@ class CBJtag():
         return boundary_scan
 
 
-    def read_bsr(self, tap_num, opcode):
+    def read_bsr(self, opcode):
         """Reads the boundary scan register (BSR) of the JTAG TAP.
         """
 
         # set the TAP to OPCODE and read the BS register
-        self.instr(tap_num, opcode)
-        bsr = self.read_dr(self.bsr_lengths[tap_num])
+        self.instr(opcode)
+        bsr = self.read_dr(self.bsr_lengths[self.target_device_tap])
 
         return bsr
 
-    def write_bsr(self, tap_num, opcode, bsr, write_instr=True):
+    def write_bsr(self, opcode, bsr, write_instr=True):
         """Writes to the boundary scan register (BSR) of the JTAG TAP.
         """
 
         # set the TAP to OPCODE and write the BS register
         if write_instr:
-            self.instr(tap_num, opcode)
-        bsr = self.write_dr(self.bsr_lengths[tap_num], bsr)
+            self.instr(opcode)
+        bsr = self.write_dr(self.bsr_lengths[self.target_device_tap], bsr)
 
         return bsr

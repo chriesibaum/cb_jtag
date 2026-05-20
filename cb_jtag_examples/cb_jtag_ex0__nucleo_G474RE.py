@@ -14,7 +14,13 @@ from cb_jtag.cb_jtag_probe import CBJtagProbe
 from key_stroke import *
 
 
-bsdl_file = './bsdl_files/STM32G471_473_474_483_484_LQFP64.bsdl'
+# Define the BSDL files for the target device and the Cortex-M core
+# Note: The STM32G474RE has implemented 2 JTAG TAPs, the first TAP corresponds
+# to the STM32G474RE microcontroller for boundary-scan operations,
+# and the second TAP corresponds to the Cortex-M4 core for debugging purposes.
+
+bsdl_file_0 = './bsdl_files/STM32G471_473_474_483_484_LQFP64.bsdl'
+bsdl_file_1 = './bsdl_files/CORTEXMX.bsdl'
 
 
 def pin_changed_cb(pin, val):
@@ -36,7 +42,8 @@ def main():
     print(f'Probe Version: {jtag.get_probe_version()}')
     print(f'Device ID: {jtag.get_probe_id_str()}')
 
-    bsdl = CBBsdl(bsdl_file)
+    bsdl_0 = CBBsdl(bsdl_file_0)
+    bsdl_1 = CBBsdl(bsdl_file_1, run_checks=False)
 
     # Hold the reset pin low for STM32xxx
     jtag.set_sys_reset_pin_low()
@@ -56,15 +63,21 @@ def main():
 
 
     # Configure IR and BSR lengths based on BSDL file
-    jtag.set_ir_lengths([5, 4])
-    jtag.set_bsr_lengths([bsdl.get_bsr_len(), 0])
+    jtag.set_target_device_tap(0)
+    jtag.set_ir_lengths([bsdl_0.get_instr_len(),
+                         bsdl_1.get_instr_len()])
+    jtag.set_bsr_lengths([bsdl_0.get_bsr_len(),
+                          bsdl_1.get_bsr_len()])
+
+    inst_extest = bsdl_0.get_instr_opcode('EXTEST')
+    print(f'\nInstruction code for EXTEST: 0b{inst_extest:05b}')
 
     # Initialize boundary-scan register interface
-    bsr = CBBsr(jtag, verbose=1, inst_extest=0b00000)
+    bsr = CBBsr(jtag, verbose=1, inst_extest=inst_extest)
     # Configure pins for boundary-scan operations
-    led_pin_tout = CBRsrOutputToggler(bsdl, 'PA5', toggle_time = 0.1)
-    led_pin_in = CBBsrPinNotifier(bsdl, 'PA5',  cb=pin_changed_cb)
-    btn_pin_in = CBBsrPinNotifier(bsdl, 'PC13', cb=pin_changed_cb)
+    led_pin_tout = CBRsrOutputToggler(bsdl_0, 'PA5', toggle_time = 0.1)
+    led_pin_in = CBBsrPinNotifier(bsdl_0, 'PA5',  cb=pin_changed_cb)
+    btn_pin_in = CBBsrPinNotifier(bsdl_0, 'PC13', cb=pin_changed_cb)
 
     bsr.add_pin(led_pin_tout)
     bsr.add_pin(led_pin_in)
