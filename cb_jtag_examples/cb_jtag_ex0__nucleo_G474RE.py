@@ -34,6 +34,7 @@ def main():
     jtag = CBJtag(jtag_probe=probe)
 
     print(f'Probe Version: {jtag.get_probe_version()}')
+    print(f'Device ID: {jtag.get_probe_id_str()}')
 
     bsdl = CBBsdl(bsdl_file)
 
@@ -61,7 +62,7 @@ def main():
     # Initialize boundary-scan register interface
     bsr = CBBsr(jtag, verbose=1, inst_extest=0b00000)
     # Configure pins for boundary-scan operations
-    led_pin_tout = CBRsrOutputToggler(bsdl, 'PA5', toggle_time = 0.5)
+    led_pin_tout = CBRsrOutputToggler(bsdl, 'PA5', toggle_time = 0.1)
     led_pin_in = CBBsrPinNotifier(bsdl, 'PA5',  cb=pin_changed_cb)
     btn_pin_in = CBBsrPinNotifier(bsdl, 'PC13', cb=pin_changed_cb)
 

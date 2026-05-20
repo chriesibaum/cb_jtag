@@ -29,6 +29,7 @@ class JtagProtocol:
     CMD_NSRST_HIGH = 0x02
     CMD_NSRST_LOW = 0x03
     CMD_GET_FW_VERSION = 0x04
+    CMD_GET_DEVICE_ID = 0x05
     FW_VERSION_PAYLOAD_LEN = 32
     STATUS_OK = 0x00
     HEADER_FMT_REQ = "<BBHI"
@@ -117,6 +118,30 @@ class JtagProtocol:
         payload = rsp[header_size:]
         version = payload.split(b"\x00", 1)[0].decode("ascii", errors="strict")
         return version, flags
+
+    @classmethod
+    def parse_device_id_response(cls, rsp):
+        header_size = struct.calcsize(cls.HEADER_FMT_RSP)
+        if len(rsp) < header_size:
+            raise ProtocolError("short response header")
+
+        status, flags, reserved, rsp_bits = struct.unpack(cls.HEADER_FMT_RSP, rsp[:header_size])
+
+        if reserved != 0:
+            raise ProtocolError(f"invalid reserved field in response: {reserved}")
+        if status != cls.STATUS_OK:
+            raise ProtocolError(f"device reported error status: {status}")
+        if rsp_bits == 0 or rsp_bits % 8 != 0:
+            raise ProtocolError(f"invalid n_bits in device ID response: {rsp_bits}")
+
+        n_bytes = rsp_bits // 8
+        payload = rsp[header_size:]
+        if len(payload) != n_bytes:
+            raise ProtocolError(
+                f"device ID payload length mismatch: expected {n_bytes}, got {len(payload)}"
+            )
+
+        return bytes(payload)
 
 class CBJtagProbe(CBJtagProbeBase):
     DEFAULT_PREFERRED_DEVICES = (
@@ -272,6 +297,24 @@ class CBJtagProbe(CBJtagProbeBase):
         rsp = bytes(self.ep_in.read(expected_rsp, timeout=1000))
         version, _ = JtagProtocol.parse_firmware_version_response(rsp)
         return version
+
+    def get_device_id(self):
+        """
+        Returns the raw device ID bytes as returned by the probe firmware. The format and meaning of these bytes is determined by the firmware and is not standardized.
+        """
+        payload = JtagProtocol.build_control_request(JtagProtocol.CMD_GET_DEVICE_ID)
+        self.ep_out.write(payload)
+        max_rsp = struct.calcsize(JtagProtocol.HEADER_FMT_RSP) + 512
+        rsp = bytes(self.ep_in.read(max_rsp, timeout=1000))
+        return JtagProtocol.parse_device_id_response(rsp)
+
+    def get_device_id_str(self):
+        """
+        Returns the device ID as a hex string, for easier display and logging.
+        """
+        device_id_bytes = self.get_device_id()
+        device_id_str = device_id_bytes.hex().upper()
+        return device_id_str
 
     def set_sys_reset_pin_high(self):
         payload = JtagProtocol.build_control_request(JtagProtocol.CMD_NSRST_HIGH)
