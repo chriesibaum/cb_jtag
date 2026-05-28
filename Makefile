@@ -72,4 +72,4 @@ mr_proper: clean
 
 venv_clean:
 	@$(E) "cleaning up virtual environment..."
-	@rm -rf /tmp/cb_jtag
+	@rm -rf .venv

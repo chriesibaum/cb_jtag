@@ -2,16 +2,20 @@
 
 # cb_jtag demo for the NUCLEO-G474RE board
 
+import logging
 import time
 from cb_jtag import CBJtag
-from cb_jtag import CBJLink
+from cb_jtag import CBJtagProbe
+from cb_jtag import CBJLinkProbe
 from cb_jtag import CBBsr
 from cb_jtag import CBBsrPinNotifier
 from cb_jtag import CBRsrOutput
 from cb_jtag import CBRsrOutputToggler
 from cb_bsdl_parser import CBBsdl
-from cb_jtag.cb_jtag_probe import CBJtagProbe
 from key_stroke import *
+
+logger = logging.getLogger(__name__)
+
 
 
 # Define the BSDL files for the target device and the Cortex-M core
@@ -24,23 +28,23 @@ bsdl_file_1 = './bsdl_files/CORTEXMX.bsdl'
 
 
 def pin_changed_cb(pin, val):
-    print(f'Pin {pin:<5s} changed to {val}')
+    logger.info(f'Pin {pin:<5s} changed to {val}')
 
 
 def main():
     # Initialize J-Link connection
 
-    # select the probe/jtag adapter to use (J-Link or CBJtagProbe)
-    # probe = CBJLink()
-    # probe.easy_setup_emulator()
-
+    # select the probe/jtag adapter to use (Chriesibaum's JTAG Probe or J-Link  Probe)
     probe = CBJtagProbe()
+    # probe = CBJLinkProbe()
+    probe.detailed_log_handler = None
+    probe.easy_setup_probe()
 
     # Setup the JTAG interface for boundary-scan operations
     jtag = CBJtag(jtag_probe=probe)
 
-    print(f'Probe Version: {jtag.get_probe_version()}')
-    print(f'Device ID: {jtag.get_probe_id_str()}')
+    logger.info(f'Probe Version: {jtag.get_probe_version()}')
+    logger.info(f'Device ID: {jtag.get_probe_id_str()}')
 
     bsdl_0 = CBBsdl(bsdl_file_0)
     bsdl_1 = CBBsdl(bsdl_file_1, run_checks=False)
@@ -52,14 +56,13 @@ def main():
 
     # Get the number of TAPs in the JTAG chain
     num_taps = jtag.get_taps_in_chain()
-    print(f'\nNumber of TAPs in JTAG chain: {num_taps}' )
+    logger.info(f'Number of TAPs in JTAG chain: {num_taps}')
 
     # Read and display the IDCODEs of all TAPs
     id_codes = jtag.get_tap_id_code(num_taps)
-    print('Detected TAPs with IDCODEs:')
+    logger.info('Detected TAPs with IDCODEs:')
     for i, idcode in enumerate(id_codes):
-        print(f'  TAP {i}: '
-              f'IDCODE: 0x{idcode:08X}')
+        logger.info(f'  TAP {i}: IDCODE: 0x{idcode:08X}')
 
 
     # Configure IR and BSR lengths based on BSDL file
@@ -70,7 +73,7 @@ def main():
                           bsdl_1.get_bsr_len()])
 
     inst_extest = bsdl_0.get_instr_opcode('EXTEST')
-    print(f'\nInstruction code for EXTEST: 0b{inst_extest:05b}')
+    logger.debug(f'Instruction code for EXTEST: 0b{inst_extest:05b}')
 
     # Initialize boundary-scan register interface
     bsr = CBBsr(jtag, verbose=1, inst_extest=inst_extest)
@@ -89,8 +92,8 @@ def main():
     bsr.enable()
 
     k = KeyStroke()
-    print('\nStarting boundary-scan operations')
-    print('Press ESC to terminate!')
+    logger.info('Starting boundary-scan operations')
+    logger.info('Press ESC to terminate!')
     while True:
         # check whether a key from the list has been pressed
         if k.check(['\x1b', 'q', 'x']):
@@ -104,7 +107,6 @@ def main():
     jtag.close()
 
 
-
-# Run the main function if this script is executed
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(name)s: %(message)s')
     main()

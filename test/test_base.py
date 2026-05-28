@@ -2,7 +2,7 @@ import pytest
 import time
 from cb_bsdl_parser.cb_bsdl import CBBsdl
 
-from cb_jtag import CBJLink
+from cb_jtag import CBJLinkProbe
 from cb_jtag import CBJtagProbe
 from cb_jtag import CBJtag
 from cb_jtag.cb_bsr import CBBsr
@@ -17,26 +17,27 @@ def get_test_params():
     #     print(f"{key}: {value}")
 
 
-    jlink_probe = CBJLink()
-    jlink_probe.easy_setup_emulator()
-    jlink_probe.set_speed(5)     # set J-Link speed to 5 kHz to be safe
-
-
     cb_jtag_probe = CBJtagProbe()
+    cb_jtag_probe.easy_setup_probe()
+
+    cb_jlink_probe = CBJLinkProbe()
+    cb_jlink_probe.easy_setup_probe()
+    cb_jlink_probe.set_speed(5)     # set J-Link speed to 5 kHz to be safe
+
 
     params = {}
     params[0] = {'jtag_probe_name': 'CBJtagProbe',
                  'jtag_probe': cb_jtag_probe}
 
     params[1] = {'jtag_probe_name': 'CBJLink',
-                 'jtag_probe': jlink_probe}
+                 'jtag_probe': cb_jlink_probe}
 
 
     for param in params:
         yield params[param]
 
     print("All test parameters have been used, cleaning up probes")
-    del jlink_probe
+    del cb_jlink_probe
     del cb_jtag_probe
 
 
@@ -62,7 +63,6 @@ class CBJtagBase:
         cls.jtag.set_sys_reset_pin_high()
         cls.jtag.close()
 
-
     def setup(self):
         # Setup the JTAG probe for boundary-scan operations
         self.jtag = CBJtag(jtag_probe=self.jtag_probe)
@@ -81,6 +81,7 @@ class CBJtagBase:
         self.id_codes = self.jtag.get_tap_id_code(self.taps_in_chain)
 
         # Configure IR and BSR lengths based on BSDL file
+        self.jtag.set_target_device_tap(0)
         self.jtag.set_ir_lengths([5, 4])
         self.jtag.set_bsr_lengths([self.bsdl.get_bsr_len(), 0])
 

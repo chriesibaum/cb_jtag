@@ -8,7 +8,7 @@ from cb_jtag.cb_bsr import CBBsrPinNotifier, CBRsrOutput, CBRsrOutputToggler
 class Test_Nucleo_G474RE(CBJtagBase):
     bsdl_file = './bsdl_files/STM32G471_473_474_483_484_LQFP64.bsdl'
     exp_num_taps = 2
-    exp_idcodes = [0x4BA00477, 0x16469041]
+    exp_idcodes = [0x16469041, 0x4BA00477]
     exp_num_taps = 2
 
     roundtrip_delay = 0.4
@@ -37,14 +37,21 @@ class Test_Nucleo_G474RE(CBJtagBase):
     def test_010_read_bsr(self):
         print('Testing reading BSR register')
 
+        # disable the bsr thread to read the BSR register without interference
+        # from the thread's write/read loop
+        self.bsr.disable()
+
         for i in range(3):
             time.sleep(0.1)
-            bsr = self.jtag.read_bsr(0, 0b00010)
+            bsr = self.jtag.read_bsr(0b00010)
 
         time.sleep(0.1)
 
         assert bsr is not None, 'Failed to read BSR register'
         print(f' BSR: {bsr:076x}')
+
+        # restart the bsr thread for subsequent tests
+        self.bsr.enable()
 
 
     def led_PA5_changed_cb(self, pin, val):
@@ -54,7 +61,7 @@ class Test_Nucleo_G474RE(CBJtagBase):
     def test_020_toggle_led(self):
         print('Testing LED toggle on PA5')
 
-        time.sleep(1)
+        time.sleep(2) # wait for the toggler to toggle a few times
 
         assert self.led_PA5_pin == 'PA5', 'LED PA5 callback not called'
         assert self.led_PA5_toggling >= 5, \
@@ -131,8 +138,3 @@ class Test_Nucleo_G474RE(CBJtagBase):
         self.led_PA5_tout.set_verbose(False)
         self.pc4_out.set_verbose(False)
         self.pc5_in.set_verbose(False)
-
-
-
-# class Test_NXP(CBJtagBase):
-#     pass

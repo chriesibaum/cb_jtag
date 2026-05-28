@@ -1,3 +1,9 @@
+class CBJtagProbeError(Exception):
+    pass
+
+class DeviceNotFoundError(CBJtagProbeError):
+    pass
+
 class CBJtagProbeBase():
   def __init__(self):
      pass

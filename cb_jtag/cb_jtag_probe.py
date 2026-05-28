@@ -3,13 +3,12 @@ import usb.util
 import struct
 
 from .cb_jtag_probe_base import CBJtagProbeBase
-
-class CBJtagProbeError(Exception):
-    pass
+from .cb_jtag_probe_base import CBJtagProbeError, DeviceNotFoundError
 
 
-class DeviceNotFoundError(CBJtagProbeError):
-    pass
+import logging
+log = logging.getLogger(__name__)
+
 
 
 class UsbBusyError(CBJtagProbeError):
@@ -154,14 +153,24 @@ class CBJtagProbe(CBJtagProbeBase):
         self.device_matcher = (
             lambda dev: CBJtagProbe._has_matching_bulk_pair(dev, self.interface_class)
         )
+
+        self.dev = None
         self._claimed = False
 
-        self.dev = self._autodetect_device(
-            preferred_devices=self.preferred_devices,
-            matcher=self.device_matcher,
-        )
-        if self.dev is None:
-            raise DeviceNotFoundError("Device not found. Check lsusb or adjust preferred_devices.")
+    def open(self, device_id=None):
+        """
+        Open a connection to the probe with the specified ID.
+        """
+
+        devices = self._detect_devices()
+        if not devices:
+            raise DeviceNotFoundError("No compatible Chriesibaum JTAG probes found. Check connections and drivers.")
+
+        if device_id is None:
+            raise ValueError("Specify an ID to select a probe.")
+
+
+        self.dev = next((d for d in devices if (d.serial_number == device_id or f"{d.bus}:{d.address}" == device_id)), None)
 
         cfg = self._get_configuration(self.dev)
         if cfg is None:
@@ -267,15 +276,14 @@ class CBJtagProbe(CBJtagProbeBase):
         except usb.core.USBError:
             return None
 
-    @classmethod
-    def _autodetect_device(cls, preferred_devices, matcher):
-        for vid, pid in preferred_devices:
-            dev = usb.core.find(idVendor=vid, idProduct=pid)
-            if dev is not None and matcher(dev):
-                return dev
-
-        # Do not fall back to arbitrary vendor-class devices (for example J-Link).
-        return None
+    def _detect_devices(self):
+        devices = []
+        for vid, pid in self.preferred_devices:
+            devs = usb.core.find(idVendor=vid, idProduct=pid, find_all=True)
+            for dev in devs:
+                if dev is not None and self.device_matcher(dev):
+                    devices.append(dev)
+        return devices
 
     @staticmethod
     def _required_bytes(n_bits):
@@ -361,3 +369,40 @@ class CBJtagProbe(CBJtagProbeBase):
     def jtag_flush(self):
         return True
 
+    def get_probes(self):
+        devices = self._detect_devices()
+
+        probes = {}
+        for dev in devices:
+            try:
+                serial = dev.serial_number
+            except usb.core.USBError:
+                serial = f"{dev.bus}:{dev.address}"
+            probes[serial] = {
+                'id': serial,
+                'manufacturer': dev.manufacturer or "Unknown",
+                'product': dev.product or f"{dev.idVendor:04X}:{dev.idProduct:04X}",
+                'driver': self.__class__.__name__,
+            }
+
+        return probes
+
+    def easy_setup_probe(self, probe_id=None):
+        """Easy setup of the probe by automatically detecting connected probes and connecting to the first one found."""
+        probes = self.get_probes()
+        if not probes:
+            log.error("No compatible Chriesibaum JTAG probes found. Check connections and drivers.")
+            raise DeviceNotFoundError("No compatible Chriesibaum JTAG probes found. Check connections and drivers.")
+
+        if probe_id is None:
+            probe = next(iter(probes))
+            probe_id = probes[probe]['id']
+        else:
+            probe = next((p for p in probes if probes[p]['id'] == probe_id), None)
+            if probe is None:
+                log.error(f"No probe found with ID: {probe_id}")
+                raise DeviceNotFoundError(f"No probe found with ID: {probe_id}")
+
+        log.info(f'Connecting to probe with id: {probe_id} using driver {self.__class__.__name__}')
+
+        self.open(probe_id)

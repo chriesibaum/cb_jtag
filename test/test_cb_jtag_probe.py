@@ -1,6 +1,5 @@
 import pytest
 from cb_jtag.cb_jtag_probe_base import CBJtagProbeBase
-from cb_jtag import CBJLink
 from cb_jtag import CBJtag
 from cb_jtag.cb_bsr import CBBsr
 

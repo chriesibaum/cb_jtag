@@ -219,6 +219,7 @@ class CBBsr(threading.Thread):
 
     def stop(self):
         self.run_flag = False
+        time.sleep(0.1)  # give the thread some time to finish
 
     def get_running(self):
         return self.run_flag and self.enable_flag
@@ -231,6 +232,9 @@ class CBBsr(threading.Thread):
                 if self.run_flag == False:
                     return
                 time.sleep(0.1)
+                # make sure to write the instruction again when re-enabling
+                # the BSR thread after a disabled state
+                write_intr = True
 
             for pin in self.pins:
                 self.bsr_out = pin.run_output(self.bsr_out)
@@ -239,7 +243,9 @@ class CBBsr(threading.Thread):
                 log.info(f'bs_write:       0x{self.bsr_out:076x}')
 
             self.bsr_in = self.jtag.write_bsr(self.inst_extest, self.bsr_out, write_intr)
-            write_intr = False  # only write the instruction in the first iteration, then keep it for subsequent iterations
+            # only write the instruction in the first iteration,
+            # then keep it for subsequent iterations
+            # write_intr = False
 
             if self.verbose > 2:
                 log.info(f'bs_read:        0x{self.bsr_in:076x}')
@@ -248,8 +254,8 @@ class CBBsr(threading.Thread):
             for pin in self.pins:
                 pin.run_input(self.bsr_in)
 
-
-            time.sleep(0.0001)   # adjust this sleep time as needed to balance CPU usage and responsiveness
+            # adjust this sleep time as needed to balance CPU usage and responsiveness
+            time.sleep(0.0001)
 
 
 
