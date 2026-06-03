@@ -42,7 +42,7 @@ class CBJtag():
         self.taps_in_chain = None
         self.target_device_tap = None
 
-        self.ir_lengths = []
+        self.ir_len = []
         self.total_ir_len = None
 
         # ensure the JTAG interface is flushed and empty
@@ -275,7 +275,7 @@ class CBJtag():
 
         self.target_device_tap = tap_num
 
-    def set_ir_lengths(self, ir_lengths):
+    def set_ir_len(self, ir_len):
         """Set the IR lengths for each TAP in the JTAG chain.
         Args:
             ir_lengths (list): A list of IR lengths for each TAP.
@@ -283,7 +283,7 @@ class CBJtag():
             CBJtagError: If the total IR length does not match the expected value.
         """
 
-        calc_ir_len = sum(ir_lengths)
+        calc_ir_len = sum(ir_len)
 
         # # check the actual ir length
         # if self.total_ir_len is not set, retrieve it
@@ -293,7 +293,7 @@ class CBJtag():
         if self.total_ir_len != calc_ir_len:    # pragma: no cover - todo: add some test
             raise CBJtagError(f"IR length mismatch: expected {calc_ir_len}, got {self.total_ir_len}")
 
-        self.ir_lengths = ir_lengths
+        self.ir_len = ir_len
 
     def get_total_ir_len(self):
         """Detect the total length of the Instruction Register (IR) chain.
@@ -352,13 +352,20 @@ class CBJtag():
         self.total_ir_len = ir_length
         return self.total_ir_len
 
-    def set_bsr_lengths(self, bsr_lengths):
+    def set_bsr_len(self, bsr_len):
         """Set the BSR lengths for each TAP in the JTAG chain.
         Args:
-            bsr_lengths (list): A list of BSR lengths for each TAP.
+            bsr_len (list): A list of BSR lengths for each TAP.
         """
 
-        self.bsr_lengths = bsr_lengths
+        self.bsr_len = bsr_len
+
+    def get_bsr_len_target_tap(self):
+        """Get the BSR length for the target device TAP.
+        Returns:
+            int: The BSR length for the target device TAP.
+        """
+        return self.bsr_len[self.target_device_tap]
 
     def get_tap_id_code(self, num_taps=1):
         self.tap_goto_sel_shift_dr()
@@ -402,9 +409,9 @@ class CBJtag():
         tdi = 0
         tdi = (1 << self.total_ir_len) -1
 
-        opcode_pos = self.total_ir_len - sum(self.ir_lengths[:self.target_device_tap+1])
+        opcode_pos = self.total_ir_len - sum(self.ir_len[:self.target_device_tap+1])
 
-        for i in range(self.ir_lengths[self.target_device_tap]):
+        for i in range(self.ir_len[self.target_device_tap]):
             bit = (opcode >> i) & 1
             if bit:
                 tdi |=  (1 << (i+opcode_pos))
@@ -516,7 +523,7 @@ class CBJtag():
 
         # set the TAP to OPCODE and read the BS register
         self.instr(opcode)
-        bsr = self.read_dr(self.bsr_lengths[self.target_device_tap])
+        bsr = self.read_dr(self.bsr_len[self.target_device_tap])
 
         return bsr
 
@@ -527,6 +534,6 @@ class CBJtag():
         # set the TAP to OPCODE and write the BS register
         if write_instr:
             self.instr(opcode)
-        bsr = self.write_dr(self.bsr_lengths[self.target_device_tap], bsr)
+        bsr = self.write_dr(self.bsr_len[self.target_device_tap], bsr)
 
         return bsr

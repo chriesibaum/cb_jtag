@@ -36,7 +36,7 @@ def main():
 
     # select the probe/jtag adapter to use (Chriesibaum's JTAG Probe or J-Link  Probe)
     probe = CBJtagProbe()
-    # probe = CBJLinkProbe()
+    #probe = CBJLinkProbe()
     probe.detailed_log_handler = None
     probe.easy_setup_probe()
 
@@ -67,9 +67,9 @@ def main():
 
     # Configure IR and BSR lengths based on BSDL file
     jtag.set_target_device_tap(0)
-    jtag.set_ir_lengths([bsdl_0.get_instr_len(),
-                         bsdl_1.get_instr_len()])
-    jtag.set_bsr_lengths([bsdl_0.get_bsr_len(),
+    jtag.set_ir_len([bsdl_0.get_instr_len(),
+                     bsdl_1.get_instr_len()])
+    jtag.set_bsr_len([bsdl_0.get_bsr_len(),
                           bsdl_1.get_bsr_len()])
 
     inst_extest = bsdl_0.get_instr_opcode('EXTEST')
@@ -81,10 +81,12 @@ def main():
     led_pin_tout = CBRsrOutputToggler(bsdl_0, 'PA5', toggle_time = 0.1)
     led_pin_in = CBBsrPinNotifier(bsdl_0, 'PA5',  cb=pin_changed_cb)
     btn_pin_in = CBBsrPinNotifier(bsdl_0, 'PC13', cb=pin_changed_cb)
+    pc5_pin_tout = CBRsrOutputToggler(bsdl_0, 'PC5', toggle_time = 0.1)
 
     bsr.add_pin(led_pin_tout)
     bsr.add_pin(led_pin_in)
     bsr.add_pin(btn_pin_in)
+    bsr.add_pin(pc5_pin_tout)
 
     # Finally, configure and start the boundary-scan operations
     bsr.config_pins()

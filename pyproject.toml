@@ -15,7 +15,7 @@ dependencies = [
   "pyusb",
   "pylink-square",
   "key_stroke",
-  "cb_bsdl_parser>=0.10.0",
+  "cb_bsdl_parser>=0.11.0",
 ]
 authors = [
   { name="Thomas", email="thomas@chriesibaum.dev" },

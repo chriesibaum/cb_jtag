@@ -8,4 +8,4 @@ from .cb_bsr import *
 
 __author__ = "Thomas Popp, Thomas@chriesibaum.com"
 __copyright__ = "Copyright 2026, Chriesibaum GmbH"
-__version__ = "0.9.0"
+__version__ = "0.10.0"

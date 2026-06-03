@@ -18,19 +18,21 @@ def get_test_params():
 
 
     cb_jtag_probe = CBJtagProbe()
-    cb_jtag_probe.easy_setup_probe()
+    cb_jtag_probe.easy_setup_probe(probe_id='FA63A4D787703F31')
 
     cb_jlink_probe = CBJLinkProbe()
-    cb_jlink_probe.easy_setup_probe()
+    cb_jlink_probe.easy_setup_probe(probe_id ='175104937')
     cb_jlink_probe.set_speed(5)     # set J-Link speed to 5 kHz to be safe
 
 
     params = {}
     params[0] = {'jtag_probe_name': 'CBJtagProbe',
-                 'jtag_probe': cb_jtag_probe}
+                 'jtag_probe': cb_jtag_probe,
+                 'id': 'FA63A4D787703F31'}
 
     params[1] = {'jtag_probe_name': 'CBJLink',
-                 'jtag_probe': cb_jlink_probe}
+                 'jtag_probe': cb_jlink_probe,
+                 'id': '175104937'}
 
 
     for param in params:
@@ -50,7 +52,7 @@ class CBJtagBase:
     @pytest.fixture(scope='class', autouse=True, params=get_test_params())
     def class_probe_context(self, request):
         cls = request.cls
-        print(f"setup_class for JTAG probe: {request.param['jtag_probe_name']}")
+        print(f"setup_class for JTAG probe: {request.param['jtag_probe_name']}, id: {request.param['id']}")
         cls.jtag_probe = request.param['jtag_probe']
 
         cls.setup(cls)
@@ -82,8 +84,8 @@ class CBJtagBase:
 
         # Configure IR and BSR lengths based on BSDL file
         self.jtag.set_target_device_tap(0)
-        self.jtag.set_ir_lengths([5, 4])
-        self.jtag.set_bsr_lengths([self.bsdl.get_bsr_len(), 0])
+        self.jtag.set_ir_len([5, 4])
+        self.jtag.set_bsr_len([self.bsdl.get_bsr_len(), 0])
 
         # Initialize boundary-scan register interface
         self.bsr = CBBsr(self.jtag, verbose=1)

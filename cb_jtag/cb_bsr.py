@@ -56,7 +56,7 @@ class CBBsrPinNotifier(CBBsrPin):
         self.cb_parent = cb_parent
         self.verbose = verbose
 
-        self.data_cell = self.bsdl.get_bsr_data_cell(self.pin +'_in')
+        self.cell_num = self.bsdl.get_bsr_cell_num(self.pin +'_in')
 
         self.val = 0
         self.last_val = None
@@ -65,7 +65,7 @@ class CBBsrPinNotifier(CBBsrPin):
         return self.val
 
     def run_input(self, bsr):
-        self.val = bsr.get_bit(self.data_cell)
+        self.val = bsr.get_bit(self.cell_num)
 
         if self.val != self.last_val:
             if self.verbose:
@@ -92,9 +92,9 @@ class CBRsrOutput(CBBsrPin):
         self.cb_parent = cb_parent
         self.verbose = verbose
 
-        self.data_cell = self.bsdl.get_bsr_data_cell(self.pin +'_out')
-        self.ctrl_cell = self.bsdl.get_bsr_ctrl_cell(self.pin +'_out')
-        self.disval = self.bsdl.get_bsr_disval(self.pin +'_out')
+        self.cell_num = self.bsdl.get_bsr_cell_num(self.pin +'_out')
+        self.cell_ccell = self.bsdl.get_bsr_cell_ccell(self.pin +'_out')
+        self.cell_disval = self.bsdl.get_bsr_cell_disval(self.pin +'_out')
 
         self.last_toggle_time = time.time()
 
@@ -102,12 +102,12 @@ class CBRsrOutput(CBBsrPin):
     def config(self, bsr, ctrl_cell=True, verbose = False):
         # Configure the BSR for the output pin and its value
         if self.verbose or verbose:
-            log.info(f'  Pin {self.pin} as output, data cell {self.data_cell:4d}, ctrl cell {self.ctrl_cell:4d}')
+            log.info(f'  Pin {self.pin} as output, data cell {self.cell_num:4d}, ctrl cell {self.cell_ccell:4d}')
 
         if ctrl_cell:
-            bsr = bsr.set_bit(self.ctrl_cell, 1 ^ self.disval)
+            bsr = bsr.set_bit(self.cell_ccell, 1 ^ self.cell_disval)
 
-        bsr = bsr.set_bit(self.data_cell, self.val)
+        bsr = bsr.set_bit(self.cell_num, self.val)
 
         self.val_last = None
 
@@ -116,9 +116,9 @@ class CBRsrOutput(CBBsrPin):
     def deconfig(self, bsr, verbose = False):
         # Deconfigure the BSR for the output pin (set to input)
         if self.verbose or verbose:
-            log.info(f'  Pin {self.pin} as input, data cell {self.data_cell:4d}, ctrl cell {self.ctrl_cell:4d}')
+            log.info(f'  Pin {self.pin} as input, data cell {self.cell_num:4d}, ctrl cell {self.cell_ccell:4d}')
 
-        bsr = bsr.set_bit(self.ctrl_cell, self.disval)
+        bsr = bsr.set_bit(self.cell_ccell, self.cell_disval)
         return bsr
 
 
@@ -139,7 +139,7 @@ class CBRsrOutput(CBBsrPin):
 
         self.val_last = self.val
 
-        bsr = bsr.set_bit(self.data_cell, self.val)
+        bsr = bsr.set_bit(self.cell_num, self.val)
 
         return bsr
 
@@ -151,9 +151,9 @@ class CBRsrOutputToggler(CBRsrOutput):
 
         self.toggle_time = toggle_time
 
-        self.data_cell = self.bsdl.get_bsr_data_cell(self.pin +'_out')
-        self.ctrl_cell = self.bsdl.get_bsr_ctrl_cell(self.pin +'_out')
-        self.disval = self.bsdl.get_bsr_disval(self.pin +'_out')
+        self.cell_num = self.bsdl.get_bsr_cell_num(self.pin +'_out')
+        self.cell_ccell = self.bsdl.get_bsr_cell_ccell(self.pin +'_out')
+        self.cell_disval = self.bsdl.get_bsr_cell_disval(self.pin +'_out')
 
         self.last_toggle_time = time.time()
 
@@ -169,20 +169,37 @@ class CBRsrOutputToggler(CBRsrOutput):
 
 
 class CBBsr(threading.Thread):
-    def __init__(self, jtag, inst_extest = 0b00000, verbose = False):
+    def __init__(self, jtag, inst_extest = 0b00000, inst_scan = 0b00010, verbose = False):
         super(CBBsr, self).__init__()
         self.jtag = jtag
         self.inst_extest = inst_extest
+        self.inst_scan = inst_scan
         self.verbose = verbose
 
         self.enable_flag = False
         self.run_flag = True
 
         # read the initial boundaray scan register
-        self.bsr_out = self.jtag.read_bsr(self.inst_extest)
+        self.bsr_out = self.jtag.read_bsr(self.inst_scan)
         if self.verbose:
             log.info('Initial boundary scan register (BSR):')
             log.info(f'  0x{self.bsr_out:076x}')
+
+
+            # print the value in binary, with leading zeros, grouped in 16-bit blocks
+            bsr_len = self.jtag.get_bsr_len_target_tap()
+            bsr_bin = f'{self.bsr_out:0{bsr_len}b}'
+            print('BSR default value (binary):')
+            pad = (16 - bsr_len % 16) % 16
+            padded = ' ' * pad + bsr_bin
+            for i in range(0, len(padded), 16):
+                block = padded[i:i+16]
+                bit_num = bsr_len - 1 - max(i - pad, 0)
+                grouped = ' '.join(block[j:j+4] for j in range(0, 16, 4))
+                actual_bits = block.replace(' ', '')
+                hex_width = (len(actual_bits) + 3) // 4
+                hex_str = f'{int(actual_bits, 2):0{hex_width}x}' if actual_bits else ''
+                print(f'  [{bit_num:>4}]: {grouped}  0x{hex_str}')
 
         self.pins = []
 
@@ -245,7 +262,7 @@ class CBBsr(threading.Thread):
             self.bsr_in = self.jtag.write_bsr(self.inst_extest, self.bsr_out, write_intr)
             # only write the instruction in the first iteration,
             # then keep it for subsequent iterations
-            # write_intr = False
+            write_intr = False
 
             if self.verbose > 2:
                 log.info(f'bs_read:        0x{self.bsr_in:076x}')
